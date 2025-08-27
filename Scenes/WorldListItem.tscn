@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3 uid="uid://dcjpt5nn4r8r"]
+
+[ext_resource type="Script" uid="uid://dle58dvui5rdv" path="res://Scripts/CharacterListItem.gd" id="1_2itj4"]
+
+[node name="WorldListItem" type="PanelContainer"]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -152.0
+offset_right = 152.0
+offset_bottom = 128.0
+grow_horizontal = 2
+script = ExtResource("1_2itj4")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="HBoxContainer/VBoxContainer"]
+layout_mode = 2
+text = "World Name
+"
+
+[node name="Label2" type="Label" parent="HBoxContainer/VBoxContainer"]
+layout_mode = 2
+text = "sub description"
+
+[node name="PlayButton" type="Button" parent="HBoxContainer"]
+layout_mode = 2
+text = "Play"

@@ -1,0 +1,39 @@
+[gd_scene load_steps=8 format=3 uid="uid://cm6xxwlql2h1y"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ig7tw"]
+frequency = 0.0026
+
+[sub_resource type="VoxelGeneratorNoise2D" id="VoxelGeneratorNoise2D_0xm2m"]
+channel = 0
+height_start = 0.0
+height_range = 100.0
+noise = SubResource("FastNoiseLite_ig7tw")
+
+[sub_resource type="VoxelBlockyModelEmpty" id="VoxelBlockyModelEmpty_h2yge"]
+
+[sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_1bvp3"]
+
+[sub_resource type="VoxelBlockyLibrary" id="VoxelBlockyLibrary_lquwl"]
+models = Array[VoxelBlockyModel]([SubResource("VoxelBlockyModelEmpty_h2yge"), SubResource("VoxelBlockyModelCube_1bvp3")])
+
+[sub_resource type="VoxelMesherBlocky" id="VoxelMesherBlocky_7mycd"]
+library = SubResource("VoxelBlockyLibrary_lquwl")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7dm0k"]
+vertex_color_use_as_albedo = true
+
+[node name="Main" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.731699, 0.534712, -0.42273, 0, 0.620176, 0.784463, 0.681628, -0.57399, 0.453782, 0, 0, 0)
+light_energy = 0.8
+
+[node name="VoxelLodTerrain" type="VoxelLodTerrain" parent="."]
+generator = SubResource("VoxelGeneratorNoise2D_0xm2m")
+mesher = SubResource("VoxelMesherBlocky_7mycd")
+material = SubResource("StandardMaterial3D_7dm0k")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.975527, 0.21988, 0, -0.21988, 0.975527, 0, 84.7817, 117.554)
+
+[node name="VoxelViewer" type="VoxelViewer" parent="Camera3D"]

@@ -1,0 +1,257 @@
+[gd_scene load_steps=5 format=3 uid="uid://djih65ishd80"]
+
+[ext_resource type="Script" uid="uid://c4vf5kxgrsxhq" path="res://blocky_game/main.gd" id="1_48xlc"]
+[ext_resource type="Script" uid="uid://ds51ne55gfw6y" path="res://Scripts/main_menu.gd" id="2_1ehe0"]
+[ext_resource type="Script" uid="uid://dprhmaxu7v8mv" path="res://Scripts/CharacterSelect.gd" id="3_1ehe0"]
+[ext_resource type="PackedScene" uid="uid://c5trpjrsnvyd5" path="res://Scenes/CharacterListItem.tscn" id="4_ce3w2"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_48xlc")
+
+[node name="MainMenu" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_1ehe0")
+
+[node name="CenterContainer" type="CenterContainer" parent="MainMenu"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="MainMenu/CenterContainer"]
+visible = false
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="MainMenu/CenterContainer/PanelContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer"]
+layout_mode = 2
+
+[node name="GameTitle" type="Label" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Blocky Game Demo"
+horizontal_alignment = 1
+
+[node name="HSeparator" type="HSeparator" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="SingleplayerButton" type="Button" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Singleplayer"
+
+[node name="HSeparator2" type="HSeparator" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "IP:"
+
+[node name="IP" type="LineEdit" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+text = "127.0.0.1"
+
+[node name="Label2" type="Label" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Port: "
+
+[node name="Port" type="SpinBox" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+max_value = 65535.0
+value = 25000.0
+
+[node name="ConnectToServerButton" type="Button" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Connect to server"
+
+[node name="HostServerButton" type="Button" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Host server"
+
+[node name="UPNPCheckbox" type="CheckBox" parent="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Use UPnP"
+
+[node name="HomeScreen" type="PanelContainer" parent="MainMenu/CenterContainer"]
+visible = false
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainMenu/CenterContainer/HomeScreen"]
+layout_mode = 2
+
+[node name="Button1" type="Button" parent="MainMenu/CenterContainer/HomeScreen/VBoxContainer"]
+layout_mode = 2
+text = "Singleplayer"
+
+[node name="Button2" type="Button" parent="MainMenu/CenterContainer/HomeScreen/VBoxContainer"]
+layout_mode = 2
+text = "Multiplayer"
+
+[node name="Button3" type="Button" parent="MainMenu/CenterContainer/HomeScreen/VBoxContainer"]
+layout_mode = 2
+text = "Settings"
+
+[node name="Button4" type="Button" parent="MainMenu/CenterContainer/HomeScreen/VBoxContainer"]
+layout_mode = 2
+text = "Credits"
+
+[node name="Button5" type="Button" parent="MainMenu/CenterContainer/HomeScreen/VBoxContainer"]
+layout_mode = 2
+text = "Exit
+"
+
+[node name="CharacterSelect" type="PanelContainer" parent="MainMenu/CenterContainer"]
+visible = false
+layout_mode = 2
+script = ExtResource("3_1ehe0")
+CharacterItemScene = ExtResource("4_ce3w2")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainMenu/CenterContainer/CharacterSelect"]
+custom_minimum_size = Vector2(400, 400)
+layout_mode = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Select Character"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="CreateButton" type="Button" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Create
+ Character"
+
+[node name="RenameButton" type="Button" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Rename 
+Character
+"
+
+[node name="DeleteButton" type="Button" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Delete 
+Character"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+draw_focus_border = true
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Button" type="Button" parent="MainMenu/CenterContainer/CharacterSelect/VBoxContainer"]
+layout_mode = 2
+text = "Back
+"
+
+[node name="WorldSelect" type="PanelContainer" parent="MainMenu/CenterContainer"]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainMenu/CenterContainer/WorldSelect"]
+custom_minimum_size = Vector2(400, 400)
+layout_mode = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="MainMenu/CenterContainer/WorldSelect/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Select World"
+horizontal_alignment = 1
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MainMenu/CenterContainer/WorldSelect/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="CreateButton" type="Button" parent="MainMenu/CenterContainer/WorldSelect/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Create New World"
+
+[node name="DeleteButton" type="Button" parent="MainMenu/CenterContainer/WorldSelect/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Delete World"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MainMenu/CenterContainer/WorldSelect/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+draw_focus_border = true
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainMenu/CenterContainer/WorldSelect/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="Button" type="Button" parent="MainMenu/CenterContainer/WorldSelect/VBoxContainer"]
+layout_mode = 2
+text = "Back
+"
+
+[node name="Multiplayer" type="PanelContainer" parent="MainMenu/CenterContainer"]
+visible = false
+layout_mode = 2
+
+[node name="Settings" type="PanelContainer" parent="MainMenu/CenterContainer"]
+visible = false
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MainMenu/CenterContainer/Settings"]
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MainMenu/CenterContainer/Settings/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MainMenu/CenterContainer/Settings/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Resolution"
+
+[node name="Button" type="Button" parent="MainMenu/CenterContainer/Settings/VBoxContainer"]
+layout_mode = 2
+text = "Back"
+
+[node name="Credits" type="PanelContainer" parent="MainMenu/CenterContainer"]
+layout_mode = 2
+
+[node name="Exit" type="PanelContainer" parent="MainMenu/CenterContainer"]
+layout_mode = 2
+
+[connection signal="connect_to_server_requested" from="MainMenu" to="." method="_on_main_menu_connect_to_server_requested"]
+[connection signal="host_server_requested" from="MainMenu" to="." method="_on_main_menu_host_server_requested"]
+[connection signal="singleplayer_requested" from="MainMenu" to="." method="_on_main_menu_singleplayer_requested"]
+[connection signal="upnp_toggled" from="MainMenu" to="." method="_on_main_menu_upnp_toggled"]
+[connection signal="pressed" from="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/SingleplayerButton" to="MainMenu" method="_on_singleplayer_button_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/ConnectToServerButton" to="MainMenu" method="_on_connect_to_server_button_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/HostServerButton" to="MainMenu" method="_on_host_server_button_pressed"]
+[connection signal="toggled" from="MainMenu/CenterContainer/PanelContainer/MarginContainer/VBoxContainer/UPNPCheckbox" to="MainMenu" method="_on_upnp_checkbox_toggled"]
+[connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button1" to="MainMenu" method="_on_singleplayer_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button2" to="MainMenu" method="_on_multiplayer_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button3" to="MainMenu" method="_on_settings_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button4" to="." method="_on_credits_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button5" to="MainMenu" method="_on_quit_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/CharacterSelect/VBoxContainer/Button" to="MainMenu" method="_on_characterback_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/WorldSelect/VBoxContainer/Button" to="MainMenu" method="_on_characterback_pressed"]
+[connection signal="pressed" from="MainMenu/CenterContainer/Settings/VBoxContainer/Button" to="MainMenu" method="_on_settings_back_pressed"]
