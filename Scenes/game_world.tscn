@@ -1,6 +1,6 @@
 [gd_scene load_steps=11 format=3 uid="uid://dptcqq5uxa4jh"]
 
-[ext_resource type="Script" uid="uid://b2sgbpc3ratxy" path="res://blocky_game/blocky_game.gd" id="1_f1ejf"]
+[ext_resource type="Script" uid="uid://b2sgbpc3ratxy" path="res://Scripts/blocky_game.gd" id="1_f1ejf"]
 [ext_resource type="Script" uid="uid://csinpqgk03ax4" path="res://blocky_game/blocks/blocks.gd" id="2_d0bjv"]
 [ext_resource type="Script" uid="uid://bbfct6petonud" path="res://blocky_game/items/item_db.gd" id="3_27os8"]
 [ext_resource type="VoxelGeneratorScript" path="res://blocky_game/generator/world_generator.tres" id="4_rr1si"]

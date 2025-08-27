@@ -2,7 +2,7 @@
 
 [ext_resource type="VoxelMesherBlocky" uid="uid://c6l3pdnhmvhqp" path="res://blocky_game/blocks/mesher.tres" id="1"]
 [ext_resource type="VoxelGeneratorScript" path="res://blocky_game/generator/world_generator.tres" id="4"]
-[ext_resource type="Script" uid="uid://b2sgbpc3ratxy" path="res://blocky_game/blocky_game.gd" id="5"]
+[ext_resource type="Script" uid="uid://b2sgbpc3ratxy" path="res://Scripts/blocky_game.gd" id="5"]
 [ext_resource type="Script" uid="uid://cxpgxknwub8b8" path="res://blocky_game/debug_info.gd" id="8"]
 [ext_resource type="Script" uid="uid://csinpqgk03ax4" path="res://blocky_game/blocks/blocks.gd" id="12"]
 [ext_resource type="Script" uid="uid://bbfct6petonud" path="res://blocky_game/items/item_db.gd" id="13"]

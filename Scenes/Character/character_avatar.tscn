@@ -1,6 +1,6 @@
 [gd_scene load_steps=9 format=3 uid="uid://ojfpybxqac1f"]
 
-[ext_resource type="Script" uid="uid://mt4wx4ajlty0" path="res://blocky_game/player/character_controller.gd" id="1"]
+[ext_resource type="Script" uid="uid://mt4wx4ajlty0" path="res://Scripts/character_controller.gd" id="1"]
 [ext_resource type="Script" uid="uid://53thcfe1tap6" path="res://blocky_game/player/avatar_camera.gd" id="2"]
 [ext_resource type="Script" uid="uid://d4da6qkj8cpe4" path="res://blocky_game/player/avatar_interaction.gd" id="3"]
 [ext_resource type="Texture2D" uid="uid://c0wr4bmx2e43l" path="res://blocky_terrain/crosshair.png" id="4"]
@@ -8,7 +8,6 @@
 [ext_resource type="PackedScene" path="res://blocky_game/gui/hotbar/hotbar.tscn" id="6"]
 [ext_resource type="PackedScene" uid="uid://bm2v4asqyh6a" path="res://blocky_game/player/character_visual.tscn" id="6_peahy"]
 [ext_resource type="PackedScene" uid="uid://cg54toj1o7c2u" path="res://blocky_game/gui/inventory/inventory.tscn" id="7"]
-
 
 [node name="CharacterAvatar" type="Node3D"]
 script = ExtResource("1")

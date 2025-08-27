@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dcjpt5nn4r8r"]
 
-[ext_resource type="Script" uid="uid://dle58dvui5rdv" path="res://Scripts/CharacterListItem.gd" id="1_2itj4"]
+[ext_resource type="Script" uid="uid://coiiw340pqyrm" path="res://Scripts/WorldListItem.gd" id="1_8nsc6"]
 
 [node name="WorldListItem" type="PanelContainer"]
 anchors_preset = 5
@@ -10,7 +10,7 @@ offset_left = -152.0
 offset_right = 152.0
 offset_bottom = 128.0
 grow_horizontal = 2
-script = ExtResource("1_2itj4")
+script = ExtResource("1_8nsc6")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2

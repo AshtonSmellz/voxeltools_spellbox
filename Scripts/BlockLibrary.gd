@@ -1,6 +1,10 @@
 extends Node
 class_name BlockLibrary
 
+# Import the required classes from Scripts folder
+const BlockType = preload("res://Scripts/BlockType.gd")
+const BlockDrop = preload("res://Scripts/BlockDrop.gd")
+
 # Singleton for managing all block types
 static var instance: BlockLibrary
 

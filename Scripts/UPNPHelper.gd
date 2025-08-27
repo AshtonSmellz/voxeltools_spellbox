@@ -1,5 +1,6 @@
 # Helper class to setup and cleanup UPNP for easy server hosting.
 extends Node
+#class_name UPNPHelper
 
 # I made this a node even if it should not need to be, because when using RefCounted, threads add a
 # reference to the object of the method they run, and since the thread is owned by that same

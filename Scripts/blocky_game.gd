@@ -8,8 +8,8 @@ const SERVER_PEER_ID = 1
 
 const CharacterScene = preload("./player/character_avatar.tscn")
 const RemoteCharacterScene = preload("./player/remote_character.tscn")
-const RandomTicks = preload("./random_ticks.gd")
-const WaterUpdater = preload("./water.gd")
+#const RandomTicks = preload("./random_ticks.gd")
+#const WaterUpdater = preload("./water.gd")
 
 @onready var _light : DirectionalLight3D = $DirectionalLight3D
 @onready var _terrain : VoxelTerrain = $VoxelTerrain
@@ -98,10 +98,10 @@ func _ready():
 	if _network_mode == NETWORK_MODE_HOST or _network_mode == NETWORK_MODE_SINGLEPLAYER:
 		add_child(RandomTicks.new())
 		
-		var water_updater := WaterUpdater.new()
+		#var water_updater := WaterUpdater.new()
 		# Current code grabs this node by name, so must be named for now...
-		water_updater.name = "Water"
-		add_child(water_updater)
+		#water_updater.name = "Water"
+		#add_child(water_updater)
 		
 		_spawn_character(SERVER_PEER_ID, Vector3(0, 64, 0))
 
