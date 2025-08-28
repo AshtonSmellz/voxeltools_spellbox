@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://c5trpjrsnvyd5"]
 
-[ext_resource type="Script" uid="uid://dle58dvui5rdv" path="res://Scripts/CharacterListItem.gd" id="1_c8o50"]
+[ext_resource type="Script" uid="uid://dle58dvui5rdv" path="res://Scripts/Menu/CharacterListItem.gd" id="1_c8o50"]
 [ext_resource type="Texture2D" uid="uid://byi57bfqodvnp" path="res://icon.svg" id="2_vnmia"]
 
 [node name="CharacterListItem" type="PanelContainer"]

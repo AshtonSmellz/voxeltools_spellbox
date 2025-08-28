@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://djih65ishd80"]
 
 [ext_resource type="Script" uid="uid://c4vf5kxgrsxhq" path="res://Scripts/main.gd" id="1_48xlc"]
-[ext_resource type="Script" uid="uid://ds51ne55gfw6y" path="res://Scripts/Menu/main_menu.gd" id="2_1ehe0"]
+[ext_resource type="Script" uid="uid://ds51ne55gfw6y" path="res://Scripts/main_menu.gd" id="2_1ehe0"]
 [ext_resource type="Script" uid="uid://dprhmaxu7v8mv" path="res://Scripts/Menu/CharacterSelect.gd" id="3_1ehe0"]
 [ext_resource type="PackedScene" uid="uid://c5trpjrsnvyd5" path="res://Scenes/CharacterListItem.tscn" id="4_ce3w2"]
 [ext_resource type="Script" uid="uid://cri11sfbxqd5a" path="res://Scripts/Menu/WorldSelect.gd" id="5_n45e2"]

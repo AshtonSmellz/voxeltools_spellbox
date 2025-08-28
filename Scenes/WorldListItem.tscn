@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://dcjpt5nn4r8r"]
 
-[ext_resource type="Script" uid="uid://coiiw340pqyrm" path="res://Scripts/WorldListItem.gd" id="1_8nsc6"]
+[ext_resource type="Script" uid="uid://coiiw340pqyrm" path="res://Scripts/Menu/WorldListItem.gd" id="1_8nsc6"]
 
 [node name="WorldListItem" type="PanelContainer"]
 anchors_preset = 5

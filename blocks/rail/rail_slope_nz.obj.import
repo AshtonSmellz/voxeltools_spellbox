@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c3gahur20k4ev"
+path="res://.godot/imported/rail_slope_nz.obj-c40ad72eb6f1153d1aae14d3fa64044c.mesh"
+
+[deps]
+
+files=["res://.godot/imported/rail_slope_nz.obj-c40ad72eb6f1153d1aae14d3fa64044c.mesh"]
+
+source_file="res://blocks/rail/rail_slope_nz.obj"
+dest_files=["res://.godot/imported/rail_slope_nz.obj-c40ad72eb6f1153d1aae14d3fa64044c.mesh", "res://.godot/imported/rail_slope_nz.obj-c40ad72eb6f1153d1aae14d3fa64044c.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=false
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

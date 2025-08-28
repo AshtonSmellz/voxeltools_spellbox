@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://c2lwrnrx0on2g"
+path="res://.godot/imported/leaves.obj-213a1915918baceb6f107da01b662f67.mesh"
+
+[deps]
+
+files=["res://.godot/imported/leaves.obj-213a1915918baceb6f107da01b662f67.mesh"]
+
+source_file="res://blocks/leaves/leaves.obj"
+dest_files=["res://.godot/imported/leaves.obj-213a1915918baceb6f107da01b662f67.mesh", "res://.godot/imported/leaves.obj-213a1915918baceb6f107da01b662f67.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=false
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

@@ -1,11 +1,451 @@
-[gd_scene load_steps=11 format=3 uid="uid://dptcqq5uxa4jh"]
+[gd_scene load_steps=9 format=3 uid="uid://dptcqq5uxa4jh"]
 
-[ext_resource type="Script" uid="uid://b2sgbpc3ratxy" path="res://Scripts/blocky_game.gd" id="1_f1ejf"]
-[ext_resource type="Script" uid="uid://csinpqgk03ax4" path="res://blocky_game/blocks/blocks.gd" id="2_d0bjv"]
-[ext_resource type="Script" uid="uid://bbfct6petonud" path="res://blocky_game/items/item_db.gd" id="3_27os8"]
-[ext_resource type="VoxelGeneratorScript" path="res://blocky_game/generator/world_generator.tres" id="4_rr1si"]
-[ext_resource type="VoxelMesherBlocky" uid="uid://c6l3pdnhmvhqp" path="res://blocky_game/blocks/mesher.tres" id="5_xqdar"]
-[ext_resource type="Script" uid="uid://cxpgxknwub8b8" path="res://blocky_game/debug_info.gd" id="6_xnm3i"]
+[ext_resource type="VoxelMesherBlocky" uid="uid://c6l3pdnhmvhqp" path="res://blocks/mesher.tres" id="5_xqdar"]
+
+[sub_resource type="GDScript" id="GDScript_0nejw"]
+script/source = "extends Node
+
+const NETWORK_MODE_SINGLEPLAYER = 0
+const NETWORK_MODE_CLIENT = 1
+const NETWORK_MODE_HOST = 2
+
+const SERVER_PEER_ID = 1
+
+const CharacterScene = preload(\"res://Scenes/Character/character_avatar.tscn\")
+const RemoteCharacterScene = preload(\"res://Scenes/Character/remote_character.tscn\")
+const RandomTicks = preload(\"./random_ticks.gd\")
+#const WaterUpdater = preload(\"./water.gd\")
+
+@onready var _light : DirectionalLight3D = $DirectionalLight3D
+@onready var _terrain : VoxelTerrain = $VoxelTerrain
+@onready var _characters_container : Node = $Players
+
+var _network_mode := NETWORK_MODE_SINGLEPLAYER
+var _ip := \"\"
+var _port := -1
+
+# Initially needed because when running multiple instances in the editor, Godot is mixing up the
+# outputs of server and clients in the same output console...
+class Logger:
+	var prefix := \"\"
+	
+	func debug(msg: String):
+		print(prefix, msg)
+
+	func error(msg: String):
+		push_error(prefix, msg)
+
+
+var _logger := Logger.new()
+
+
+func get_terrain() -> VoxelTerrain:
+	return _terrain
+
+
+func get_network_mode() -> int:
+	return _network_mode
+
+
+func set_network_mode(mode: int):
+	_network_mode = mode
+
+
+func set_ip(ip: String):
+	_ip = ip
+
+
+func set_port(port: int):
+	_port = port
+
+
+func _ready():
+	if _network_mode == NETWORK_MODE_HOST:
+		_logger.prefix = \"Server: \"
+		
+		# Configure multiplayer API as server
+		var peer := ENetMultiplayerPeer.new()
+		var err := peer.create_server(_port, 32, 0, 0, 0)
+		if err != OK:
+			_logger.error(str(\"Failed to create server peer, error \", err))
+			return
+		var mp := get_tree().get_multiplayer()
+		mp.peer_connected.connect(_on_peer_connected)
+		mp.peer_disconnected.connect(_on_peer_disconnected)
+		mp.multiplayer_peer = peer
+
+		# Configure VoxelTerrain as server
+		var synchronizer := VoxelTerrainMultiplayerSynchronizer.new()
+		_terrain.add_child(synchronizer)
+
+	elif _network_mode == NETWORK_MODE_CLIENT:
+		_logger.prefix = \"Client: \"
+		
+		# Configure multiplayer API as client
+		var peer := ENetMultiplayerPeer.new()
+		var err := peer.create_client(_ip, _port, 0, 0, 0, 0)
+		if err != OK:
+			_logger.error(str(\"Failed to create client peer, error \", err))
+			return
+		var mp := get_tree().get_multiplayer()
+		mp.connected_to_server.connect(_on_connected_to_server)
+		mp.connection_failed.connect(_on_connection_failed)
+		mp.peer_connected.connect(_on_peer_connected)
+		mp.peer_disconnected.connect(_on_peer_disconnected)
+		mp.server_disconnected.connect(_on_server_disconnected)
+		mp.multiplayer_peer = peer
+
+		# Configure VoxelTerrain as client
+		var synchronizer := VoxelTerrainMultiplayerSynchronizer.new()
+		_terrain.add_child(synchronizer)
+		_terrain.stream = null
+
+	if _network_mode == NETWORK_MODE_HOST or _network_mode == NETWORK_MODE_SINGLEPLAYER:
+		add_child(RandomTicks.new())
+		
+		#var water_updater := WaterUpdater.new()
+		# Current code grabs this node by name, so must be named for now...
+		#water_updater.name = \"Water\"
+		#add_child(water_updater)
+		
+		_spawn_character(SERVER_PEER_ID, Vector3(0, 64, 0))
+
+
+func _on_connected_to_server():
+	_logger.debug(\"connected to server\")
+
+
+func _on_connection_failed():
+	_logger.debug(\"Connection failed\")
+
+
+func _on_peer_connected(new_peer_id: int):
+	_logger.debug(str(\"peer \", new_peer_id, \" connected\"))
+	
+	if _network_mode == NETWORK_MODE_HOST:
+		# Spawn own character
+		var new_character = _spawn_remote_character(new_peer_id, Vector3(0, 64, 0))
+		_logger.debug(str(\"Sending own character to \", new_peer_id))
+		rpc_id(new_peer_id, &\"receive_own_character\", new_peer_id, new_character.position)
+		
+		# Send existing characters to the new peer
+		for i in _characters_container.get_child_count():
+			var character := _characters_container.get_child(i)
+			if character != new_character:
+				# TODO This sucks, find a better way to get peer ID from character
+				var peer_id := character.name.to_int()
+				_logger.debug(str(\"Sending remote character \", peer_id, \" to \", new_peer_id))
+				rpc_id(new_peer_id, &\"receive_remote_character\", peer_id, character.position)
+		
+		# Send new character to other clients
+		var peers := get_tree().get_multiplayer().get_peers()
+		for peer_id in peers:
+			if peer_id != new_peer_id:
+				_logger.debug(str(\"Sending remote character \", peer_id, \" to other \", new_peer_id))
+				rpc_id(peer_id, &\"receive_remote_character\", new_peer_id, new_character.position)
+
+
+func _on_peer_disconnected(peer_id: int):
+	_logger.debug(str(\"Peer \", peer_id, \" disconnected\"))
+	# Remove character
+	var node_name = str(peer_id)
+	if _characters_container.has_node(node_name):
+		var character = _characters_container.get_node(node_name)
+		character.queue_free()
+	else:
+		_logger.debug(str(\"Character \", peer_id, \" not found\"))
+
+
+func _on_server_disconnected():
+	_logger.debug(\"Server disconnected\")
+	# TODO Go back to main menu, the game will spam RPC errors
+
+
+func _unhandled_input(event: InputEvent):
+	# TODO Make a pause menu with options?
+	if event is InputEventKey:
+		if event.pressed:
+			if event.keycode == KEY_L:
+				# Toggle shadows
+				_light.shadow_enabled = not _light.shadow_enabled
+#			if event.keycode == KEY_KP_0:
+#				# Force save
+#				_save_world()
+
+
+func _notification(what: int):
+	match what:
+		NOTIFICATION_WM_CLOSE_REQUEST:
+			if _network_mode == NETWORK_MODE_HOST or _network_mode == NETWORK_MODE_SINGLEPLAYER:
+				# Save game when the user closes the window
+				_save_world()
+
+
+func _save_world():
+	_terrain.save_modified_blocks()
+
+
+func _spawn_character(peer_id: int, pos: Vector3) -> Node3D:
+	var node_name = str(peer_id)
+	if _characters_container.has_node(node_name):
+		_logger.error(str(\"Character \", peer_id, \" already created\"))
+		return null
+	var character : Node3D = CharacterScene.instantiate()
+	character.name = node_name
+	character.position = pos
+	character.terrain = get_terrain().get_path()
+	_characters_container.add_child(character)
+	return character
+
+
+func _spawn_remote_character(peer_id: int, pos: Vector3) -> Node3D:
+	var node_name = str(peer_id)
+	if _characters_container.has_node(node_name):
+		_logger.debug(str(\"Remote character \", peer_id, \" already created\"))
+		return null
+	var character := RemoteCharacterScene.instantiate()
+	character.position = pos
+	character.name = str(peer_id)
+	if _network_mode == NETWORK_MODE_HOST:
+		# The server is authoritative on voxel terrain, so it needs a viewer to load terrain
+		# around each character. We'll also tell which peer ID it uses, so the terrain knows which
+		# peer to send the voxels to.
+		# TODO Make a specific scene?
+		var viewer := VoxelViewer.new()
+		viewer.view_distance = 128
+		viewer.requires_visuals = false
+		viewer.requires_collisions = false
+		viewer.set_network_peer_id(peer_id)
+		viewer.set_requires_data_block_notifications(true)
+		#viewer.requires_data_block_notifications = true
+		character.add_child(viewer)
+	_characters_container.add_child(character)
+	return character
+
+
+@rpc(\"authority\", \"call_remote\", \"reliable\", 0)
+func receive_remote_character(peer_id: int, pos: Vector3):
+	_logger.debug(str(\"receive_remote_character \", peer_id, \" at \", pos))
+	_spawn_remote_character(peer_id, pos)
+
+
+@rpc(\"authority\", \"call_remote\", \"reliable\", 0)
+func receive_own_character(peer_id: int, pos: Vector3):
+	_logger.debug(str(\"receive_own_character \", peer_id, \" at \", pos))
+	_spawn_character(peer_id, pos)
+"
+
+[sub_resource type="VoxelStreamRegionFiles" id="3"]
+directory = "res://blocky_game/save"
+
+[sub_resource type="GDScript" id="GDScript_hy2kt"]
+script/source = "#tool
+extends VoxelGeneratorScript
+
+const Structure = preload(\"./structure.gd\")
+const TreeGenerator = preload(\"./tree_generator.gd\")
+const HeightmapCurve = preload(\"./heightmap_curve.tres\")
+
+# TODO Don't hardcode, get by name from library somehow
+const AIR = 0
+const DIRT = 1
+const GRASS = 2
+const WATER_FULL = 14
+const WATER_TOP = 13
+const LOG = 4
+const LEAVES = 25
+const TALL_GRASS = 8
+const DEAD_SHRUB = 26
+#const STONE = 8
+
+const _CHANNEL = VoxelBuffer.CHANNEL_TYPE
+
+const _moore_dirs = [
+	Vector3(-1, 0, -1),
+	Vector3(0, 0, -1),
+	Vector3(1, 0, -1),
+	Vector3(-1, 0, 0),
+	Vector3(1, 0, 0),
+	Vector3(-1, 0, 1),
+	Vector3(0, 0, 1),
+	Vector3(1, 0, 1)
+]
+
+
+var _tree_structures := []
+
+var _heightmap_min_y := int(HeightmapCurve.min_value)
+var _heightmap_max_y := int(HeightmapCurve.max_value)
+var _heightmap_range := 0
+var _heightmap_noise := FastNoiseLite.new()
+var _trees_min_y := 0
+var _trees_max_y := 0
+
+
+func _init():
+	# TODO Even this must be based on a seed, but I'm lazy
+	var tree_generator = TreeGenerator.new()
+	tree_generator.log_type = LOG
+	tree_generator.leaves_type = LEAVES
+	for i in 16:
+		var s = tree_generator.generate()
+		_tree_structures.append(s)
+
+	var tallest_tree_height = 0
+	for structure in _tree_structures:
+		var h = int(structure.voxels.get_size().y)
+		if tallest_tree_height < h:
+			tallest_tree_height = h
+	_trees_min_y = _heightmap_min_y
+	_trees_max_y = _heightmap_max_y + tallest_tree_height
+
+	#_heightmap_noise.seed = 131183
+	_heightmap_noise.frequency = 1.0 / 128.0
+	_heightmap_noise.fractal_octaves = 4
+
+	# IMPORTANT
+	# If we don't do this `Curve` could bake itself when interpolated,
+	# and this causes crashes when used in multiple threads
+	HeightmapCurve.bake()
+
+
+func _get_used_channels_mask() -> int:
+	return 1 << _CHANNEL
+
+
+func _generate_block(buffer: VoxelBuffer, origin_in_voxels: Vector3i, lod: int):
+	# TODO There is an issue doing this, need to investigate why because it should be supported
+	# Saves from this demo used 8-bit, which is no longer the default
+	# buffer.set_channel_depth(_CHANNEL, VoxelBuffer.DEPTH_8_BIT)
+
+	# Assuming input is cubic in our use case (it doesn't have to be!)
+	var block_size := int(buffer.get_size().x)
+	var oy := origin_in_voxels.y
+	# TODO This hardcodes a cubic block size of 16, find a non-ugly way...
+	# Dividing is a false friend because of negative values
+	var chunk_pos := Vector3(
+		origin_in_voxels.x >> 4,
+		origin_in_voxels.y >> 4,
+		origin_in_voxels.z >> 4)
+
+	_heightmap_range = _heightmap_max_y - _heightmap_min_y
+
+	# Ground
+
+	if origin_in_voxels.y > _heightmap_max_y:
+		buffer.fill(AIR, _CHANNEL)
+
+	elif origin_in_voxels.y + block_size < _heightmap_min_y:
+		buffer.fill(DIRT, _CHANNEL)
+
+	else:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = _get_chunk_seed_2d(chunk_pos)
+		
+		var gx : int
+		var gz := origin_in_voxels.z
+
+		for z in block_size:
+			gx = origin_in_voxels.x
+
+			for x in block_size:
+				var height := _get_height_at(gx, gz)
+				var relative_height := height - oy
+				
+				# Dirt and grass
+				if relative_height > block_size:
+					buffer.fill_area(DIRT,
+						Vector3(x, 0, z), Vector3(x + 1, block_size, z + 1), _CHANNEL)
+				elif relative_height > 0:
+					buffer.fill_area(DIRT,
+						Vector3(x, 0, z), Vector3(x + 1, relative_height, z + 1), _CHANNEL)
+					if height >= 0:
+						buffer.set_voxel(GRASS, x, relative_height - 1, z, _CHANNEL)
+						if relative_height < block_size and rng.randf() < 0.2:
+							var foliage = TALL_GRASS
+							if rng.randf() < 0.1:
+								foliage = DEAD_SHRUB
+							buffer.set_voxel(foliage, x, relative_height, z, _CHANNEL)
+				
+				# Water
+				if height < 0 and oy < 0:
+					var start_relative_height := 0
+					if relative_height > 0:
+						start_relative_height = relative_height
+					buffer.fill_area(WATER_FULL,
+						Vector3(x, start_relative_height, z), 
+						Vector3(x + 1, block_size, z + 1), _CHANNEL)
+					if oy + block_size == 0:
+						# Surface block
+						buffer.set_voxel(WATER_TOP, x, block_size - 1, z, _CHANNEL)
+						
+				gx += 1
+
+			gz += 1
+
+	# Trees
+
+	if origin_in_voxels.y <= _trees_max_y and origin_in_voxels.y + block_size >= _trees_min_y:
+		var voxel_tool := buffer.get_voxel_tool()
+		var structure_instances := []
+			
+		_get_tree_instances_in_chunk(chunk_pos, origin_in_voxels, block_size, structure_instances)
+	
+		# Relative to current block
+		var block_aabb := AABB(Vector3(), buffer.get_size() + Vector3i(1, 1, 1))
+
+		for dir in _moore_dirs:
+			var ncpos : Vector3 = (chunk_pos + dir).round()
+			_get_tree_instances_in_chunk(ncpos, origin_in_voxels, block_size, structure_instances)
+
+		for structure_instance in structure_instances:
+			var pos : Vector3 = structure_instance[0]
+			var structure : Structure = structure_instance[1]
+			var lower_corner_pos := pos - structure.offset
+			var aabb := AABB(lower_corner_pos, structure.voxels.get_size() + Vector3i(1, 1, 1))
+
+			if aabb.intersects(block_aabb):
+				voxel_tool.paste_masked(lower_corner_pos, 
+					structure.voxels, 1 << VoxelBuffer.CHANNEL_TYPE,
+					# Masking
+					VoxelBuffer.CHANNEL_TYPE, AIR)
+
+	buffer.compress_uniform_channels()
+
+
+func _get_tree_instances_in_chunk(
+	cpos: Vector3, offset: Vector3, chunk_size: int, tree_instances: Array):
+		
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _get_chunk_seed_2d(cpos)
+
+	for i in 4:
+		var pos := Vector3(rng.randi() % chunk_size, 0, rng.randi() % chunk_size)
+		pos += cpos * chunk_size
+		pos.y = _get_height_at(pos.x, pos.z)
+		
+		if pos.y > 0:
+			pos -= offset
+			var si := rng.randi() % len(_tree_structures)
+			var structure : Structure = _tree_structures[si]
+			tree_instances.append([pos.round(), structure])
+
+
+#static func get_chunk_seed(cpos: Vector3) -> int:
+#	return cpos.x ^ (13 * int(cpos.y)) ^ (31 * int(cpos.z))
+
+
+static func _get_chunk_seed_2d(cpos: Vector3) -> int:
+	return int(cpos.x) ^ (31 * int(cpos.z))
+
+
+func _get_height_at(x: int, z: int) -> int:
+	var t = 0.5 + 0.5 * _heightmap_noise.get_noise_2d(x, z)
+	return int(HeightmapCurve.sample_baked(t))
+"
+
+[sub_resource type="VoxelGeneratorScript" id="VoxelGeneratorScript_p4c8d"]
+script = SubResource("GDScript_hy2kt")
 
 [sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_ixhix"]
 ground_color = Color(0.14902, 0.0901961, 0.0745098, 1)
@@ -24,34 +464,28 @@ glow_hdr_threshold = 0.5
 fog_enabled = true
 fog_aerial_perspective = 1.0
 
-[sub_resource type="VoxelStreamRegionFiles" id="3"]
-directory = "res://blocky_game/save"
-
 [node name="GameWorld" type="Node"]
-script = ExtResource("1_f1ejf")
+script = SubResource("GDScript_0nejw")
 
-[node name="Blocks" type="Node" parent="."]
-script = ExtResource("2_d0bjv")
+[node name="Players" type="Node" parent="."]
 
-[node name="Items" type="Node" parent="."]
-script = ExtResource("3_27os8")
+[node name="ItemLibrary" type="Node" parent="."]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("2")
+[node name="BlockLibrary" type="Node" parent="."]
 
-[node name="VoxelTerrain" type="VoxelTerrain" parent="."]
+[node name="VoxelInterface" type="Node" parent="."]
+
+[node name="VoxelTerrain" type="VoxelTerrain" parent="VoxelInterface"]
 stream = SubResource("3")
-generator = ExtResource("4_rr1si")
+generator = SubResource("VoxelGeneratorScript_p4c8d")
 mesher = ExtResource("5_xqdar")
 gi_mode = 1
 run_stream_in_editor = false
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.97321, 0.172326, -0.152203, -0.0478236, 0.495785, 0.867127, 0.224888, 0.851176, -0.474262, 1.51966, 19.7004, 14.0879)
+transform = Transform3D(-0.97321, 0.172326, -0.152202, -0.0478236, 0.495785, 0.867127, 0.224888, 0.851176, -0.474262, 1.51966, 19.7004, 14.0879)
 light_color = Color(0.877946, 0.876756, 0.873512, 1)
 shadow_enabled = true
 
-[node name="DebugInfo" type="Node" parent="."]
-script = ExtResource("6_xnm3i")
-
-[node name="Players" type="Node" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("2")
