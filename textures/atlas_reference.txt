@@ -1,0 +1,19 @@
+
+=== Voxel Atlas Reference ===
+Atlas Size: 16x16 tiles (256x256 pixels)
+Tile Size: 16x16 pixels each
+
+Block ID -> Atlas Position (x, y):
+0: Air (no texture)
+1: Stone -> (0, 0)
+2: Wood -> Top (1, 0), Sides (2, 0)
+3: Iron -> (3, 0)
+4: Glass -> (4, 0)
+5: Water -> (5, 0)
+6: Lava -> (6, 0)
+7: Grass -> Top (0, 1), Sides (1, 1), Bottom (2, 1)
+
+To add more blocks:
+- Add textures at the next available position
+- Update VoxelBlockyLibrary with new model
+- Add to MaterialDatabase

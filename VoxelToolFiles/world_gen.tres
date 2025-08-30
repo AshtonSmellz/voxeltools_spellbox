@@ -1,0 +1,7 @@
+[gd_resource type="VoxelGeneratorNoise" load_steps=2 format=3 uid="uid://dejn02lbo72ui"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_qvgq0"]
+
+[resource]
+channel = 4
+noise = SubResource("FastNoiseLite_qvgq0")

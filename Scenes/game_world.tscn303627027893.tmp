@@ -15,7 +15,7 @@ const SERVER_PEER_ID = 1
 
 const CharacterScene = preload(\"res://Scenes/Character/character_avatar.tscn\")
 const RemoteCharacterScene = preload(\"res://Scenes/Character/remote_character.tscn\")
-#const RandomTicks = preload(\"./random_ticks.gd\")
+const RandomTicks = preload(\"./random_ticks.gd\")
 #const WaterUpdater = preload(\"./water.gd\")
 
 @onready var _light : DirectionalLight3D = $DirectionalLight3D
@@ -103,7 +103,7 @@ func _ready():
 		_terrain.stream = null
 
 	if _network_mode == NETWORK_MODE_HOST or _network_mode == NETWORK_MODE_SINGLEPLAYER:
-		#add_child(RandomTicks.new())
+		add_child(RandomTicks.new())
 		
 		#var water_updater := WaterUpdater.new()
 		# Current code grabs this node by name, so must be named for now...

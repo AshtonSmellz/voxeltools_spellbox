@@ -103,7 +103,7 @@ func _ready():
 		_terrain.stream = null
 
 	if _network_mode == NETWORK_MODE_HOST or _network_mode == NETWORK_MODE_SINGLEPLAYER:
-		#add_child(RandomTicks.new())
+		add_child(RandomTicks.new())
 		
 		#var water_updater := WaterUpdater.new()
 		# Current code grabs this node by name, so must be named for now...

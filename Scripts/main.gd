@@ -1,7 +1,7 @@
 extends Node
 
 # Import your custom scripts
-const MainMenu = preload("res://Scripts/main_menu.gd")
+const MainMenu = preload("res://Scripts/Menu/main_menu.gd")
 const CharacterData = preload("res://Scripts/CharacterData.gd")
 const WorldData = preload("res://Scripts/WorldData.gd")
 const WorldSaveSystem = preload("res://Scripts/WorldSaveSystem.gd")

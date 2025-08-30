@@ -1,0 +1,6 @@
+[gd_resource type="VoxelMesherBlocky" load_steps=2 format=3 uid="uid://c7crvpq63j0hh"]
+
+[ext_resource type="VoxelBlockyLibrary" uid="uid://n28k61esrty4" path="res://VoxelToolFiles/voxel_blocky_library.tres" id="1_snk4o"]
+
+[resource]
+library = ExtResource("1_snk4o")
