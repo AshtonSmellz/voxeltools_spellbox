@@ -266,8 +266,11 @@ func process_modifications(world_manager: VoxelWorldManager):
 		for mod in modifications_to_apply:
 			world_manager.modify_voxel_properties(mod.position, mod.properties)
 
-# Update active spells (called by VoxelWorldManager)
-func update_spells(delta: float, world_manager: VoxelWorldManager):
+# Update active spells (call this in _process or _physics_process)
+func update_spells(delta: float, world_manager):
+	if not world_manager:
+		return
+		
 	var spells_to_remove = []
 	
 	for i in range(active_spells.size() - 1, -1, -1):

@@ -11,7 +11,7 @@ extends Control
 signal world_chosen(world_id: String, world_data: WorldData)
 signal back_pressed()
 
-var world_save_system: WorldSaveSystem
+# Uses WorldSaveSystem singleton - no local instance needed
 var world_items: Array[WorldListItem] = []
 var selected_item: WorldListItem = null
 
@@ -21,8 +21,6 @@ func _ready():
 	delete_button.pressed.connect(_on_delete_pressed)
 	back_button.pressed.connect(_on_back_pressed)
 	
-	# Get or create WorldSaveSystem
-	world_save_system = WorldSaveSystem.new()
 	
 	# Load worlds
 	refresh_world_list()
@@ -38,7 +36,7 @@ func refresh_world_list():
 	selected_item = null
 	
 	# Load all available worlds
-	var available_worlds = world_save_system.get_available_worlds()
+	var available_worlds = WorldSaveSystem.get_available_worlds()
 	
 	print("Found ", available_worlds.size(), " worlds")
 	
@@ -152,7 +150,7 @@ func _show_world_creation_dialog():
 	dialog.canceled.connect(func(): dialog.queue_free())
 
 func _create_world(world_name: String, world_type: String, seed: int):
-	var world_data = world_save_system.create_world(world_name, world_type, seed)
+	var world_data = WorldSaveSystem.create_world(world_name, world_type, seed)
 	if world_data:
 		print("Created world: ", world_name)
 		refresh_world_list()
@@ -182,7 +180,7 @@ func _delete_world():
 	if selected_item == null:
 		return
 	
-	var success = world_save_system.delete_world(selected_item.world_id)
+	var success = WorldSaveSystem.delete_world(selected_item.world_id)
 	if success:
 		print("Deleted world: ", selected_item.world_data.world_name)
 		refresh_world_list()

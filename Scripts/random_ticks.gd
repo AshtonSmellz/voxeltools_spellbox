@@ -3,7 +3,7 @@
 
 extends Node
 
-const VoxelLibraryResource = preload("./blocks/voxel_library.tres")
+const VoxelLibraryResource = preload("res://blocks/voxel_library.tres")
 
 # Takes effect in a large radius around the player
 const RADIUS = 100

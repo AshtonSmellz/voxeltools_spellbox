@@ -1,27 +1,29 @@
 extends Node
-class_name WorldSaveSystem
+# WorldSaveSystem singleton - no class_name needed for autoloads
 
 # Manages saving/loading of world data with proper separation of concerns
-# VoxelTools handles voxel data, we handle metadata and dynamic properties
+# VoxelTools handles voxel data through VoxelStream, we handle metadata and dynamic properties
 
 const WORLDS_DIR = "user://worlds/"
-const CHUNK_SUBDIR = "chunks/"
+const PROPERTIES_SUBDIR = "properties/"
 const GLOBAL_SUBDIR = "global/"
 
 var current_world_data: WorldData
 var current_world_path: String
-var block_property_manager: BlockPropertyManager
+var voxel_world_manager: VoxelWorldManager
 var save_timer: float = 0.0
 var auto_save_interval: float = 300.0  # 5 minutes
 
 signal world_saved(success: bool)
 signal world_loaded(success: bool)
-signal chunk_saved(chunk_pos: Vector3i)
-signal chunk_loaded(chunk_pos: Vector3i)
+signal properties_saved(chunk_pos: Vector3i)
+signal properties_loaded(chunk_pos: Vector3i)
 
 func _ready():
-	block_property_manager = get_node("/root/BlockPropertyManager")
 	_ensure_world_directories()
+
+func set_voxel_world_manager(manager: VoxelWorldManager):
+	voxel_world_manager = manager
 
 func _process(delta):
 	if current_world_data:
@@ -41,6 +43,8 @@ func create_world(world_name: String, world_type: String = "default", seed: int 
 	world_data.world_name = world_name
 	world_data.world_type = world_type
 	world_data.seed = seed if seed != -1 else randi()
+	world_data.creation_date = int(Time.get_unix_time_from_system())
+	world_data.last_played = world_data.creation_date
 	
 	# Generate world ID and path
 	var world_id = _generate_world_id()
@@ -48,8 +52,15 @@ func create_world(world_name: String, world_type: String = "default", seed: int 
 	
 	# Create directory structure
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(world_path))
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(world_path + CHUNK_SUBDIR))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(world_path + PROPERTIES_SUBDIR))
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(world_path + GLOBAL_SUBDIR))
+	
+	# Configure VoxelStream for this world
+	if voxel_world_manager and voxel_world_manager.voxel_terrain:
+		var stream = VoxelStreamSQLite.new()
+		stream.database_path = world_path + "voxels.sqlite"
+		voxel_world_manager.voxel_terrain.stream = stream
+		print("Configured VoxelStream SQLite at: ", stream.database_path)
 	
 	# Save initial world data
 	var save_path = world_path + "world.tres"
@@ -58,6 +69,9 @@ func create_world(world_name: String, world_type: String = "default", seed: int 
 	if error != OK:
 		print("Failed to create world: ", error)
 		return null
+	
+	current_world_data = world_data
+	current_world_path = world_path
 	
 	print("Created world: ", world_name, " at ", world_path)
 	return world_data
@@ -80,6 +94,22 @@ func load_world(world_id: String) -> bool:
 	current_world_data.update_last_played()
 	save_timer = 0.0
 	
+	# Configure VoxelStream to load from this world
+	if voxel_world_manager and voxel_world_manager.voxel_terrain:
+		var stream = VoxelStreamSQLite.new()
+		stream.database_path = world_path + "voxels.sqlite"
+		voxel_world_manager.voxel_terrain.stream = stream
+		
+		# Force reload of voxel data
+		voxel_world_manager.voxel_terrain.restart_stream()
+		print("Loaded voxel database from: ", stream.database_path)
+	
+	# Load global data (active spells, etc.)
+	_load_global_data()
+	
+	# Load all saved dynamic properties
+	_load_all_properties()
+	
 	print("Loaded world: ", world_data.world_name)
 	world_loaded.emit(true)
 	return true
@@ -100,8 +130,15 @@ func save_world() -> bool:
 		world_saved.emit(false)
 		return false
 	
-	# Save global magical effects and world state
+	# Save all dynamic properties
+	_save_all_properties()
+	
+	# Save global data (active spells, etc.)
 	_save_global_data()
+	
+	# VoxelStream automatically saves voxel data
+	if voxel_world_manager and voxel_world_manager.voxel_terrain:
+		voxel_world_manager.voxel_terrain.save_modified_blocks()
 	
 	print("Saved world: ", current_world_data.world_name)
 	world_saved.emit(true)
@@ -112,126 +149,107 @@ func auto_save():
 		print("Auto-saving world...")
 		save_world()
 
-# Chunk-specific save/load operations
-func save_chunk(chunk_pos: Vector3i, voxel_data: VoxelBuffer = null) -> bool:
-	if current_world_path.is_empty():
-		return false
+# Save/Load dynamic properties for modified voxels
+func _save_all_properties():
+	if not voxel_world_manager or current_world_path.is_empty():
+		return
 	
-	var chunk_filename = "chunk_%d_%d_%d" % [chunk_pos.x, chunk_pos.y, chunk_pos.z]
-	var success = true
+	var props_path = current_world_path + PROPERTIES_SUBDIR
+	var modified_voxels = voxel_world_manager.modified_voxels
 	
-	# Save voxel data using VoxelTools (if provided)
-	if voxel_data:
-		var voxel_path = current_world_path + CHUNK_SUBDIR + chunk_filename + ".voxel"
-		# Note: This would use VoxelTools' save method
-		# voxel_data.save_to_file(voxel_path)
-		print("Would save voxel data to: ", voxel_path)
+	# Group modified voxels by chunk
+	var chunks_with_props = {}
+	for world_pos in modified_voxels:
+		var chunk_pos = _world_to_chunk_pos(world_pos)
+		if not chunks_with_props.has(chunk_pos):
+			chunks_with_props[chunk_pos] = []
+		chunks_with_props[chunk_pos].append(world_pos)
 	
-	# Save dynamic properties (our custom data)
-	var props_success = _save_chunk_properties(chunk_pos, chunk_filename)
+	# Save properties for each chunk
+	for chunk_pos in chunks_with_props:
+		_save_chunk_properties(chunk_pos, chunks_with_props[chunk_pos])
 	
-	if success and props_success:
-		current_world_data.statistics["chunks_generated"] += 1
-		chunk_saved.emit(chunk_pos)
-	
-	return success and props_success
+	print("Saved properties for ", chunks_with_props.size(), " chunks")
 
-func load_chunk(chunk_pos: Vector3i) -> Dictionary:
-	if current_world_path.is_empty():
-		return {}
+func _save_chunk_properties(chunk_pos: Vector3i, voxel_positions: Array):
+	var filename = "props_%d_%d_%d.dat" % [chunk_pos.x, chunk_pos.y, chunk_pos.z]
+	var file_path = current_world_path + PROPERTIES_SUBDIR + filename
 	
-	var chunk_filename = "chunk_%d_%d_%d" % [chunk_pos.x, chunk_pos.y, chunk_pos.z]
-	var result = {"voxel_data": null, "properties": {}}
-	
-	# Load voxel data using VoxelTools
-	var voxel_path = current_world_path + CHUNK_SUBDIR + chunk_filename + ".voxel"
-	if FileAccess.file_exists(voxel_path):
-		# Note: This would use VoxelTools' load method
-		# result["voxel_data"] = VoxelBuffer.load_from_file(voxel_path)
-		print("Would load voxel data from: ", voxel_path)
-	
-	# Load dynamic properties
-	result["properties"] = _load_chunk_properties(chunk_pos, chunk_filename)
-	
-	chunk_loaded.emit(chunk_pos)
-	return result
-
-func _save_chunk_properties(chunk_pos: Vector3i, filename: String) -> bool:
-	# Get dynamic properties for this chunk
-	var chunk_props = {}
-	var modified_blocks = block_property_manager.get_modified_blocks_in_chunk(chunk_pos)
-	
-	if modified_blocks.is_empty():
-		# No properties to save, delete file if it exists
-		var props_path = current_world_path + CHUNK_SUBDIR + filename + ".props"
-		if FileAccess.file_exists(props_path):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(props_path))
-		return true
-	
-	# Collect properties for serialization
-	for world_pos in modified_blocks:
-		var local_pos = block_property_manager.world_to_local(world_pos)
-		var dynamic_props = block_property_manager.get_dynamic_properties(world_pos)
-		if dynamic_props:
-			chunk_props[local_pos] = dynamic_props.pack_to_bytes()
-	
-	# Save to compressed binary format
-	var props_path = current_world_path + CHUNK_SUBDIR + filename + ".props"
-	var file = FileAccess.open(props_path, FileAccess.WRITE)
-	if file == null:
-		print("Failed to open chunk properties file: ", props_path)
-		return false
+	var file = FileAccess.open(file_path, FileAccess.WRITE)
+	if not file:
+		print("Failed to create properties file: ", file_path)
+		return
 	
 	# Write header
 	file.store_32(1)  # Version
-	file.store_32(chunk_props.size())  # Number of blocks with properties
+	file.store_32(voxel_positions.size())  # Number of voxels
 	
-	# Write properties
-	for local_pos in chunk_props:
-		file.store_8(local_pos.x)
-		file.store_8(local_pos.y)
-		file.store_8(local_pos.z)
-		var data: PackedByteArray = chunk_props[local_pos]
-		file.store_32(data.size())
-		file.store_var(data)
+	# Write each voxel's properties
+	for world_pos in voxel_positions:
+		var props = voxel_world_manager.modified_voxels[world_pos]
+		
+		# Store position
+		file.store_32(world_pos.x)
+		file.store_32(world_pos.y)
+		file.store_32(world_pos.z)
+		
+		# Store packed properties
+		file.store_32(props.packed_data)
 	
 	file.close()
-	return true
+	properties_saved.emit(chunk_pos)
 
-func _load_chunk_properties(chunk_pos: Vector3i, filename: String) -> Dictionary:
-	var props_path = current_world_path + CHUNK_SUBDIR + filename + ".props"
-	if not FileAccess.file_exists(props_path):
-		return {}
+func _load_all_properties():
+	if not voxel_world_manager or current_world_path.is_empty():
+		return
 	
-	var file = FileAccess.open(props_path, FileAccess.READ)
-	if file == null:
-		print("Failed to open chunk properties file: ", props_path)
-		return {}
+	var props_dir = current_world_path + PROPERTIES_SUBDIR
+	var dir = DirAccess.open(props_dir)
+	if not dir:
+		return
+	
+	dir.list_dir_begin()
+	var filename = dir.get_next()
+	var loaded_chunks = 0
+	
+	while filename != "":
+		if filename.begins_with("props_") and filename.ends_with(".dat"):
+			_load_chunk_properties_file(props_dir + filename)
+			loaded_chunks += 1
+		filename = dir.get_next()
+	
+	print("Loaded properties from ", loaded_chunks, " chunks")
+
+func _load_chunk_properties_file(file_path: String):
+	var file = FileAccess.open(file_path, FileAccess.READ)
+	if not file:
+		print("Failed to open properties file: ", file_path)
+		return
 	
 	# Read header
 	var version = file.get_32()
 	if version != 1:
-		print("Unsupported chunk properties version: ", version)
+		print("Unsupported properties version: ", version)
 		file.close()
-		return {}
+		return
 	
-	var block_count = file.get_32()
-	var result = {}
+	var voxel_count = file.get_32()
 	
-	# Read properties
-	for i in range(block_count):
-		var local_pos = Vector3i(file.get_8(), file.get_8(), file.get_8())
-		var data_size = file.get_32()
-		var data: PackedByteArray = file.get_var()
+	# Read each voxel's properties
+	for i in range(voxel_count):
+		var world_pos = Vector3i(
+			file.get_32(),
+			file.get_32(),
+			file.get_32()
+		)
 		
-		# Create and populate DynamicBlockProperties
-		var props = DynamicBlockProperties.new()
-		if props.unpack_from_bytes(data):
-			var world_pos = block_property_manager.chunk_and_local_to_world(chunk_pos, local_pos)
-			block_property_manager.set_dynamic_properties(world_pos, props)
+		var packed_data = file.get_32()
+		var props = DynamicVoxelProperties.new(packed_data)
+		
+		# Apply to world
+		voxel_world_manager.modify_voxel_properties(world_pos, props)
 	
 	file.close()
-	return result
 
 func _save_global_data():
 	if current_world_path.is_empty():
@@ -239,16 +257,70 @@ func _save_global_data():
 	
 	var global_path = current_world_path + GLOBAL_SUBDIR
 	
-	# Save memory usage statistics
-	var stats_file = FileAccess.open(global_path + "memory_stats.json", FileAccess.WRITE)
+	# Save active spells
+	if voxel_world_manager and voxel_world_manager.spell_system:
+		var spells_file = FileAccess.open(global_path + "active_spells.dat", FileAccess.WRITE)
+		if spells_file:
+			var active_spells = voxel_world_manager.spell_system.active_spells
+			spells_file.store_32(active_spells.size())
+			
+			for spell in active_spells:
+				# Store spell data
+				spells_file.store_float(spell.time_remaining)
+				spells_file.store_32(spell.effect.shape)
+				spells_file.store_float(spell.effect.radius)
+				spells_file.store_float(spell.effect.duration)
+				spells_file.store_float(spell.effect.intensity)
+				
+				# Store affected positions
+				spells_file.store_32(spell.affected_positions.size())
+				for pos in spell.affected_positions:
+					spells_file.store_32(pos.x)
+					spells_file.store_32(pos.y)
+					spells_file.store_32(pos.z)
+			
+			spells_file.close()
+	
+	# Save world statistics
+	if current_world_data:
+		var stats_file = FileAccess.open(global_path + "statistics.json", FileAccess.WRITE)
+		if stats_file:
+			stats_file.store_string(JSON.stringify(current_world_data.statistics, "\t"))
+			stats_file.close()
+
+func _load_global_data():
+	if current_world_path.is_empty():
+		return
+	
+	var global_path = current_world_path + GLOBAL_SUBDIR
+	
+	# Load statistics
+	var stats_file = FileAccess.open(global_path + "statistics.json", FileAccess.READ)
 	if stats_file:
-		var memory_stats = block_property_manager.get_memory_usage_summary()
-		stats_file.store_string(JSON.stringify(memory_stats, "\t"))
+		var json_string = stats_file.get_as_text()
 		stats_file.close()
+		
+		var json = JSON.new()
+		var parse_result = json.parse(json_string)
+		if parse_result == OK:
+			current_world_data.statistics = json.data
+	
+	# Note: Active spells are not loaded as they're temporary effects
+	# You could implement spell persistence if desired
+
+func _world_to_chunk_pos(world_pos: Vector3i) -> Vector3i:
+	var chunk_size = 16  # VoxelTerrain default chunk size
+	return Vector3i(
+		int(floor(world_pos.x / float(chunk_size))),
+		int(floor(world_pos.y / float(chunk_size))),
+		int(floor(world_pos.z / float(chunk_size)))
+	)
 
 func _generate_world_id() -> String:
-	var crypto = Crypto.new()
-	return crypto.generate_random_bytes(8).hex_encode()
+	# Generate a unique ID using timestamp and random number
+	var timestamp = Time.get_unix_time_from_system()
+	var random = randi()
+	return "%d_%d" % [timestamp, random]
 
 # World management utilities
 func get_available_worlds() -> Array[Dictionary]:
@@ -290,14 +362,21 @@ func _delete_directory_recursive(path: String) -> bool:
 	var file_name = dir.get_next()
 	
 	while file_name != "":
-		var full_path = path + file_name
+		var full_path = path + "/" + file_name
 		if dir.current_is_dir():
-			_delete_directory_recursive(full_path + "/")
+			_delete_directory_recursive(full_path)
 		else:
 			dir.remove(file_name)
 		file_name = dir.get_next()
 	
-	dir.remove_absolute(ProjectSettings.globalize_path(path))
+	# Remove the directory itself
+	dir.list_dir_end()
+	var parent = path.get_base_dir()
+	var dir_name = path.get_file()
+	var parent_dir = DirAccess.open(parent)
+	if parent_dir:
+		parent_dir.remove(dir_name)
+	
 	return true
 
 func get_world_size_on_disk(world_id: String) -> int:
@@ -314,9 +393,9 @@ func _calculate_directory_size(path: String) -> int:
 	var file_name = dir.get_next()
 	
 	while file_name != "":
-		var full_path = path + file_name
+		var full_path = path + "/" + file_name
 		if dir.current_is_dir():
-			total_size += _calculate_directory_size(full_path + "/")
+			total_size += _calculate_directory_size(full_path)
 		else:
 			var file = FileAccess.open(full_path, FileAccess.READ)
 			if file:
@@ -325,3 +404,14 @@ func _calculate_directory_size(path: String) -> int:
 		file_name = dir.get_next()
 	
 	return total_size
+
+# Format file size for display
+func format_file_size(bytes: int) -> String:
+	if bytes < 1024:
+		return "%d B" % bytes
+	elif bytes < 1024 * 1024:
+		return "%.1f KB" % (bytes / 1024.0)
+	elif bytes < 1024 * 1024 * 1024:
+		return "%.1f MB" % (bytes / (1024.0 * 1024.0))
+	else:
+		return "%.2f GB" % (bytes / (1024.0 * 1024.0 * 1024.0))

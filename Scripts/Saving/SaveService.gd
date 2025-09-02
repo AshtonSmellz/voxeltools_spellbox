@@ -1,5 +1,5 @@
 extends Node
-class_name SaveService
+# SaveService singleton - no class_name needed for autoloads
 
 const CHAR_DIR := "user://characters"
 

@@ -18,3 +18,5 @@ config/icon="res://icon.svg"
 [autoload]
 
 DDD="*res://addons/zylann.debug_draw/debug_draw.gd"
+SaveService="*res://Scripts/Saving/SaveService.gd"
+WorldSaveSystem="*res://Scripts/Saving/WorldSaveSystem.gd"

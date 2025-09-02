@@ -2,7 +2,6 @@
 
 [ext_resource type="Texture2D" uid="uid://bxo4bsw3yg42b" path="res://blocks/terrain.png" id="1"]
 
-
 [resource]
 transparency = 2
 alpha_scissor_threshold = 0.6

@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://djih65ishd80"]
+[gd_scene load_steps=7 format=3 uid="uid://djih65ishd80"]
 
 [ext_resource type="Script" uid="uid://c4vf5kxgrsxhq" path="res://Scripts/main.gd" id="1_48xlc"]
 [ext_resource type="Script" uid="uid://ds51ne55gfw6y" path="res://Scripts/Menu/main_menu.gd" id="2_1ehe0"]
@@ -6,10 +6,22 @@
 [ext_resource type="PackedScene" uid="uid://c5trpjrsnvyd5" path="res://Scenes/CharacterListItem.tscn" id="4_ce3w2"]
 [ext_resource type="Script" uid="uid://cri11sfbxqd5a" path="res://Scripts/Menu/WorldSelect.gd" id="5_n45e2"]
 [ext_resource type="PackedScene" uid="uid://dcjpt5nn4r8r" path="res://Scenes/WorldListItem.tscn" id="6_opfnp"]
-[ext_resource type="Script" uid="uid://s7xxjky3cjpe" path="res://Scripts/Tools/TestScript.gd" id="7_cp0ys"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_48xlc")
+use_runtime_setup = null
+library_path = null
+mesher_path = null
+generator_path = null
+save_path = null
+world_seed = null
+initial_region_radius_chunks = null
+enable_game_tick = null
+game_tick_hz = null
+enable_random_tick = null
+random_tick_hz = null
+enable_time_of_day = null
+minutes_per_day = null
 
 [node name="MainMenu" type="Control" parent="."]
 layout_mode = 3
@@ -230,13 +242,6 @@ layout_mode = 2
 [node name="Exit" type="PanelContainer" parent="MainMenu/CenterContainer"]
 layout_mode = 2
 
-[node name="Testing" type="Node" parent="."]
-script = ExtResource("7_cp0ys")
-
-[connection signal="connect_to_server_requested" from="MainMenu" to="." method="_on_main_menu_connect_to_server_requested"]
-[connection signal="host_server_requested" from="MainMenu" to="." method="_on_main_menu_host_server_requested"]
-[connection signal="singleplayer_requested" from="MainMenu" to="." method="_on_main_menu_singleplayer_requested"]
-[connection signal="upnp_toggled" from="MainMenu" to="." method="_on_main_menu_upnp_toggled"]
 [connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button1" to="MainMenu" method="_on_singleplayer_pressed"]
 [connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button2" to="MainMenu" method="_on_multiplayer_pressed"]
 [connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button3" to="MainMenu" method="_on_settings_pressed"]

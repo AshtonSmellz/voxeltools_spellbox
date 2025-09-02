@@ -37,8 +37,8 @@ func setup(data: WorldData, id: String):
 	name_label.text = data.world_name
 	info_label.text = "Type: %s • Last played: %s • Playtime: %s" % [
 		data.world_type.capitalize(), 
-		data.get_last_played_formatted(),
-		data.get_playtime_formatted()
+		data.get_formatted_last_played(),
+		data.get_formatted_playtime()
 	]
 	
 	# Set up play button

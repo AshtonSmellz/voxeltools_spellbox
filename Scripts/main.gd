@@ -1,282 +1,333 @@
+# main.gd — manager-centric bootstrap that preserves prior functionality
 extends Node
 
-# Import your custom scripts
-const MainMenu = preload("res://Scripts/Menu/main_menu.gd")
-const CharacterData = preload("res://Scripts/CharacterData.gd")
-const WorldData = preload("res://Scripts/WorldData.gd")
-const WorldSaveSystem = preload("res://Scripts/WorldSaveSystem.gd")
-const BlockLibrary = preload("res://Scripts/BlockLibrary.gd")
-const BlockPropertyManager = preload("res://Scripts/BlockPropertyManager.gd")
+# -----------------------
+# Scene wiring (set these in the Inspector if your node names differ)
+# -----------------------
+@export_node_path("Node") var voxel_world_manager_path
+@export_node_path("Node") var terrain_path
+@export_node_path("Node") var player_spawn_path
+@export_node_path("CanvasItem") var debug_label_path
+@export var player_scene: PackedScene
 
-# Import blocky game components
-const BlockyGameScene = preload("res://Scenes/game_world.tscn")
+# -----------------------
+# World resources & options
+# -----------------------
+@export var use_runtime_setup := true
+@export var library_path := "res://VoxelToolFiles/voxel_blocky_library.tres"
+@export var mesher_path  := "res://VoxelToolFiles/voxel_mesher_blocky.tres"
+@export var generator_path := ""            # optional: e.g. "res://VoxelToolFiles/fast_noise_generator.tres"
+@export var save_path := ""                 # optional: e.g. "user://worlds/slot1"
+@export var world_seed: int = 1337
+@export var initial_region_radius_chunks := 6
 
-#const UPNPHelper = preload("res://Scripts/upnp_helper.gd")
+# -----------------------
+# Ticking / simulation hooks
+# -----------------------
+@export var enable_game_tick := true
+@export var game_tick_hz := 20.0
+@export var enable_random_tick := true
+@export var random_tick_hz := 2.0
 
-const UPNPHelper = preload("res://Scripts/UPNPHelper.gd")
+# -----------------------
+# Time of day / lighting
+# -----------------------
+@export var enable_time_of_day := false
+@export var minutes_per_day := 20.0
 
-@onready var _main_menu: Control = $MainMenu
+# -----------------------
+# Internals
+# -----------------------
+const PATH_MANAGER_FALLBACK := "res://Scripts/Blocks/VoxelWorldManager.gd"
 
-# Game state
-var _game: Node
-var _upnp_helper: UPNPHelper
-var _world_save_system: WorldSaveSystem
-var _block_library: BlockLibrary
-var _block_property_manager: BlockPropertyManager
+var _mgr: Node
+var _terrain: Node
+var _player: Node
+var _debug_label: CanvasItem
+var _game_timer: Timer
+var _random_timer: Timer
+var _clock_timer: Timer
+var _clock_minutes := 8.0 * 60.0
 
-# Selected game data
-var selected_character: CharacterData
-var selected_world_data: WorldData
-var selected_world_id: String
-var network_mode: String = ""
+func _ready() -> void:
+	_mgr = _get_or_make_manager()
+	if _mgr == null:
+		push_error("[main] No VoxelWorldManager available.")
+		return
 
-# Network constants
-const NETWORK_MODE_SINGLEPLAYER = 0
-const NETWORK_MODE_CLIENT = 1
-const NETWORK_MODE_HOST = 2
+	_terrain = _get_or_find_terrain()
+	if _terrain == null:
+		push_error("[main] No terrain node found.")
+		return
 
-func _ready():
-	print("Main: Initializing game systems...")
+	_player = _ensure_player()
+	_debug_label = debug_label_path and get_node_or_null(debug_label_path)
+
+	if use_runtime_setup:
+		_configure_world()
+
+	_connect_manager_signals()
+	_setup_timers()
 	
-	# Initialize core systems
-	_initialize_systems()
+	# Connect VoxelWorldManager to WorldSaveSystem singleton
+	if _mgr is VoxelWorldManager:
+		WorldSaveSystem.set_voxel_world_manager(_mgr)
 	
-	# Connect menu signals
-	_connect_menu_signals()
-	
-	print("Main: Ready")
+	_bootstrap_world()
+	print("[main] Initialization complete.")
 
-func _initialize_systems():
-	# Initialize world save system
-	_world_save_system = WorldSaveSystem.new()
-	add_child(_world_save_system)
-	
-	# Initialize block library
-	_block_library = BlockLibrary.new()
-	add_child(_block_library)
-	
-	# Initialize block property manager
-	_block_property_manager = BlockPropertyManager.new()
-	add_child(_block_property_manager)
-	
-	print("Main: Core systems initialized")
+# ... (rest of the script stays the same as the version I sent before)
 
-func _connect_menu_signals():
-	if _main_menu:
-		# Connect new signal structure
-		if _main_menu.has_signal("singleplayer_requested"):
-			_main_menu.singleplayer_requested.connect(_on_singleplayer_requested)
-		if _main_menu.has_signal("host_server_requested"):
-			_main_menu.host_server_requested.connect(_on_host_server_requested)
-		if _main_menu.has_signal("connect_to_server_requested"):
-			_main_menu.connect_to_server_requested.connect(_on_connect_to_server_requested)
-		if _main_menu.has_signal("upnp_toggled"):
-			_main_menu.upnp_toggled.connect(_on_upnp_toggled)
-		if _main_menu.has_signal("game_ready_to_start"):
-			_main_menu.game_ready_to_start.connect(_on_game_ready_to_start)
 
-# Menu signal handlers
-func _on_singleplayer_requested():
-	print("Main: Singleplayer mode selected")
-	network_mode = "singleplayer"
-	# Menu will handle character/world selection
+# -------------------------------------------------------------------------
+# SETUP HELPERS
+# -------------------------------------------------------------------------
 
-func _on_host_server_requested(port: int, use_upnp: bool):
-	print("Main: Starting server on port ", port, " with UPnP: ", use_upnp)
-	network_mode = "host"
-	
-	# Set up UPnP first if requested
-	if use_upnp:
-		_setup_upnp(port)
-	
-	# Create server
-	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_server(port, 32)
-	
-	if error == OK:
-		multiplayer.multiplayer_peer = peer
-		
-		# Connect multiplayer signals
-		multiplayer.peer_connected.connect(_on_peer_connected)
-		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-		
-		print("Main: Server started successfully")
-		if _main_menu and _main_menu.has_method("on_server_started_successfully"):
-			_main_menu.on_server_started_successfully()
-	else:
-		print("Main: Failed to start server: ", error)
-		if _main_menu and _main_menu.has_method("on_server_start_failed"):
-			_main_menu.on_server_start_failed("Failed to create server on port " + str(port))
+func _get_or_make_manager() -> Node:
+	# A) Explicit reference
+	if voxel_world_manager_path:
+		var n := get_node_or_null(voxel_world_manager_path)
+		if n != null:
+			return n
 
-func _on_connect_to_server_requested(ip: String, port: int):
-	print("Main: Connecting to server ", ip, ":", port)
-	network_mode = "client"
-	
-	# Create client
-	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_client(ip, port)
-	
-	if error == OK:
-		multiplayer.multiplayer_peer = peer
-		
-		# Connect multiplayer signals
-		multiplayer.connected_to_server.connect(_on_connected_to_server)
-		multiplayer.connection_failed.connect(_on_connection_failed)
-		multiplayer.server_disconnected.connect(_on_server_disconnected)
-		multiplayer.peer_connected.connect(_on_peer_connected)
-		multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-		
-		print("Main: Attempting connection...")
-	else:
-		print("Main: Failed to create client: ", error)
-		if _main_menu and _main_menu.has_method("on_connection_failed"):
-			_main_menu.on_connection_failed("Failed to create client connection")
+	# B) Heuristic by name
+	for c in get_children():
+		if c.name.begins_with("VoxelWorldManager"):
+			return c
 
-func _on_upnp_toggled(pressed: bool):
-	print("Main: UPnP toggled: ", pressed)
-	if pressed:
-		if _upnp_helper == null:
-			_upnp_helper = UPNPHelper.new()
-			add_child(_upnp_helper)
-	else:
-		if _upnp_helper != null:
-			_upnp_helper.queue_free()
-			_upnp_helper = null
+	# C) Instance from script on disk
+	if ResourceLoader.exists(PATH_MANAGER_FALLBACK):
+		var S := load(PATH_MANAGER_FALLBACK)
+		if S:
+			var inst: Node = S.new()
+			inst.name = "VoxelWorldManager"
+			add_child(inst)
+			return inst
 
-func _on_game_ready_to_start(character: CharacterData, world_id: String, world_data: WorldData, mode: String):
-	print("Main: Starting game with:")
-	print("  Character: ", character.name)
-	print("  World: ", world_data.world_name)
-	print("  Mode: ", mode)
-	
-	# Store selected data
-	selected_character = character
-	selected_world_data = world_data
-	selected_world_id = world_id
-	
-	# Load world in save system
-	if not _world_save_system.load_world(world_id):
-		print("Main: Failed to load world, creating new save...")
-		# For new worlds, we might need to save the world data first
-		var save_error = ResourceSaver.save(world_data, "user://worlds/" + world_id + "/world.tres")
-		if save_error != OK:
-			print("Main: Failed to save world data: ", save_error)
+	# D) Last resort placeholder
+	var fallback := Node.new()
+	fallback.name = "VoxelWorldManager"
+	add_child(fallback)
+	push_warning("[main] Using placeholder manager; some features will be disabled.")
+	return fallback
+
+func _get_or_find_terrain() -> Node:
+	if terrain_path:
+		var n := get_node_or_null(terrain_path)
+		if n: return n
+	var n1 := get_node_or_null("VoxelTerrain")
+	if n1: return n1
+	var n2 := get_node_or_null("VoxelLodTerrain")
+	if n2: return n2
+	# shallow scan
+	for c in get_children():
+		if c and (c.get_class() == "VoxelTerrain" or c.get_class() == "VoxelLodTerrain"):
+			return c
+	return null
+
+func _ensure_player() -> Node:
+	# If a player already exists as a child, use it
+	for c in get_children():
+		if c and c.name.begins_with("Player"):
+			return c
+	# Else instance from scene if provided
+	if player_scene:
+		var p := player_scene.instantiate()
+		p.name = "Player"
+		add_child(p)
+		_position_player_at_spawn(p)
+		return p
+	return null
+
+func _position_player_at_spawn(p: Node) -> void:
+	if player_spawn_path:
+		var sp := get_node_or_null(player_spawn_path)
+		if sp and sp is Node3D and p is Node3D:
+			p.global_transform = sp.global_transform
+
+func _configure_world() -> void:
+	var lib := _safe_load(library_path)
+	var mesher := _safe_load(mesher_path)
+	var gen := _safe_load(generator_path) if generator_path != "" else null
+
+
+	# Preferred: let manager configure everything if it exposes a function
+	if _mgr.has_method("configure"):
+		_mgr.call("configure", {
+			"terrain": _terrain,
+			"library": lib,
+			"mesher": mesher,
+			"generator": gen,
+			"seed": world_seed,
+			"save_path": save_path,
+			"initial_region_radius_chunks": initial_region_radius_chunks
+		})
+		return
+
+	# Compatibility: assign directly if manager doesn't do it
+	_assign_mesher_and_library(_terrain, mesher, lib)
+
+	# If manager exposes individual setters, use them
+	if gen and _mgr.has_method("set_generator"):
+		_mgr.call("set_generator", gen)
+	if _mgr.has_method("set_seed"):
+		_mgr.call("set_seed", world_seed)
+	if save_path != "" and _mgr.has_method("set_save_path"):
+		_mgr.call("set_save_path", save_path)
+	if _mgr.has_method("set_player"):
+		_mgr.call("set_player", _player)
+
+func _assign_mesher_and_library(terrain: Node, mesher: Resource, lib: Resource) -> void:
+	var mesher_set := false
+	if terrain and "mesher" in terrain:
+		terrain.mesher = mesher
+		mesher_set = true
+	elif terrain and terrain.has_method("set_mesher"):
+		terrain.call("set_mesher", mesher)
+		mesher_set = true
+	if mesher:
+		if "library" in mesher:
+			mesher.library = lib
+		elif mesher.has_method("set_library"):
+			mesher.call("set_library", lib)
+	if not mesher_set:
+		push_warning("[main] Could not assign mesher to terrain (plugin API mismatch?).")
+
+func _connect_manager_signals() -> void:
+	var map = {
+		"chunk_generated": "_on_chunk_generated",
+		"region_generated": "_on_region_generated",
+		"block_updated": "_on_block_updated",
+		"save_requested": "_on_save_requested",
+		"error": "_on_manager_error",
+		"info": "_on_manager_info"
+	}
+	for sig in map.keys():
+		if _mgr.has_signal(sig):
+			_mgr.connect(sig, Callable(self, map[sig]))
+
+func _setup_timers() -> void:
+	if enable_game_tick and _mgr.has_method("game_tick"):
+		_game_timer = Timer.new()
+		_game_timer.one_shot = false
+		_game_timer.wait_time = 1.0 / max(1.0, game_tick_hz)
+		add_child(_game_timer)
+		_game_timer.timeout.connect(func(): _mgr.call("game_tick"))
+		_game_timer.start()
+
+	if enable_random_tick and _mgr.has_method("random_tick"):
+		_random_timer = Timer.new()
+		_random_timer.one_shot = false
+		_random_timer.wait_time = 1.0 / max(0.1, random_tick_hz)
+		add_child(_random_timer)
+		_random_timer.timeout.connect(func(): _mgr.call("random_tick"))
+		_random_timer.start()
+
+	if enable_time_of_day and _mgr.has_method("set_time_of_day_minutes"):
+		_clock_timer = Timer.new()
+		_clock_timer.one_shot = false
+		_clock_timer.wait_time = 0.25
+		add_child(_clock_timer)
+		_clock_timer.timeout.connect(_advance_clock)
+		_clock_timer.start()
+
+func _bootstrap_world() -> void:
+	# Preferred: manager handles load/create
+	if save_path != "" and _mgr.has_method("load_world"):
+		var ok: bool = _mgr.has_method("load_world") and (_mgr.call("load_world") == true)
+		if ok == true:
+			if _mgr.has_method("post_load_warmup"):
+				_mgr.call("post_load_warmup")
 			return
-		_world_save_system.load_world(world_id)
-	
-	# Load game world scene
-	_load_game_world()
 
-func _load_game_world():
-	print("Main: Loading game world...")
-	
-	# Hide menu
-	_main_menu.hide()
-	
-	# Instantiate game world
-	_game = BlockyGameScene.instantiate()
-	
-	# Configure network mode for the game
-	var net_mode = NETWORK_MODE_SINGLEPLAYER
-	match network_mode:
-		"singleplayer":
-			net_mode = NETWORK_MODE_SINGLEPLAYER
-		"host":
-			net_mode = NETWORK_MODE_HOST
-		"client":
-			net_mode = NETWORK_MODE_CLIENT
-	
-	# Set up the game with our data
-	if _game.has_method("set_network_mode"):
-		_game.set_network_mode(net_mode)
-	
-	if _game.has_method("initialize_with_game_data"):
-		_game.initialize_with_game_data(selected_character, selected_world_data, selected_world_id)
-	
-	# Add to scene tree
-	add_child(_game)
-	
-	# Set window title
-	match network_mode:
-		"host":
-			get_viewport().get_window().title = "Server - " + selected_world_data.world_name
-		"client":
-			get_viewport().get_window().title = "Client - " + selected_world_data.world_name
-		"singleplayer":
-			get_viewport().get_window().title = selected_world_data.world_name
+	# No save or failed to load — create new
+	if _mgr.has_method("create_world"):
+		_mgr.call("create_world", {
+			"seed": world_seed,
+			# In _bootstrap_world():
+			"around_position": (_player as Node3D).global_transform.origin if _player is Node3D else Vector3.ZERO
+		})
+	elif _mgr.has_method("pregenerate_region"):
+		var center: Vector3 = (_player as Node3D).global_transform.origin if _player is Node3D else Vector3.ZERO
+		_mgr.call("pregenerate_region", center, initial_region_radius_chunks)
 
-# Network event handlers
-func _on_connected_to_server():
-	print("Main: Connected to server")
-	if _main_menu and _main_menu.has_method("on_connected_to_server"):
-		_main_menu.on_connected_to_server()
+# -------------------------------------------------------------------------
+# RUNTIME
+# -------------------------------------------------------------------------
 
-func _on_connection_failed():
-	print("Main: Connection to server failed")
-	if _main_menu and _main_menu.has_method("on_connection_failed"):
-		_main_menu.on_connection_failed("Connection to server failed")
+func _process(_dt: float) -> void:
+	_update_debug_label()
 
-func _on_server_disconnected():
-	print("Main: Server disconnected")
-	if _main_menu and _main_menu.has_method("on_disconnected_from_server"):
-		_main_menu.on_disconnected_from_server()
-	
-	# Return to menu
-	_return_to_menu()
+func _input(event: InputEvent) -> void:
+	# Forward input to manager if it wants it
+	if _mgr and _mgr.has_method("_input_from_main"):
+		_mgr.call("_input_from_main", event)
 
-func _on_peer_connected(peer_id: int):
-	print("Main: Peer ", peer_id, " connected")
+# -------------------------------------------------------------------------
+# CLOCK / LIGHTING
+# -------------------------------------------------------------------------
 
-func _on_peer_disconnected(peer_id: int):
-	print("Main: Peer ", peer_id, " disconnected")
+func _advance_clock() -> void:
+	if not enable_time_of_day:
+		return
+	var minutes_per_tick := (24.0 * 60.0) / (minutes_per_day * (1.0 / _clock_timer.wait_time))
+	_clock_minutes = fmod(_clock_minutes + minutes_per_tick, 24.0 * 60.0)
+	if _mgr.has_method("set_time_of_day_minutes"):
+		_mgr.call("set_time_of_day_minutes", _clock_minutes)
 
-# UPnP setup
-func _setup_upnp(port: int):
-	if _upnp_helper != null and not _upnp_helper.is_setup():
-		print("Main: Setting up UPnP for port ", port)
-		_upnp_helper.setup(port, PackedStringArray(["TCP", "UDP"]), "VoxelMagicGame", 20 * 60)
+# -------------------------------------------------------------------------
+# SIGNAL HANDLERS (only used if manager exposes signals)
+# -------------------------------------------------------------------------
 
-# Utility methods
-func _return_to_menu():
-	if _game:
-		_game.queue_free()
-		_game = null
-	
-	# Reset state
-	selected_character = null
-	selected_world_data = null
-	selected_world_id = ""
-	network_mode = ""
-	
-	# Disconnect multiplayer
-	if multiplayer.multiplayer_peer:
-		multiplayer.multiplayer_peer.close()
-		multiplayer.multiplayer_peer = null
-	
-	# Show menu
-	_main_menu.show()
-	_main_menu._reset_and_return_home()
-	
-	# Reset window title
-	get_viewport().get_window().title = "Voxel Magic Game"
+func _on_chunk_generated(pos) -> void:
+	# Hook for effects/analytics
+	pass
 
-func _notification(what: int):
-	match what:
-		NOTIFICATION_WM_CLOSE_REQUEST:
-			# Save game when closing
-			if _game and _game.has_method("save_world"):
-				print("Main: Saving world before exit...")
-				_game.save_world()
-			get_tree().quit()
+func _on_region_generated(aabb) -> void:
+	pass
 
-# Debug helpers
-func _unhandled_input(event: InputEvent):
-	if event is InputEventKey and event.pressed:
-		match event.keycode:
-			KEY_F1:
-				# Toggle debug info
-				print("Main: Debug info toggle")
-			KEY_ESCAPE:
-				if _game:
-					# Return to menu (for testing)
-					_return_to_menu()
+func _on_block_updated(vpos: Vector3i) -> void:
+	pass
+
+func _on_save_requested() -> void:
+	if _mgr.has_method("save_world"):
+		_mgr.call("save_world")
+
+func _on_manager_error(msg: String) -> void:
+	push_error("[VoxelWorldManager] " + msg)
+
+func _on_manager_info(msg: String) -> void:
+	print("[VoxelWorldManager] " + msg)
+
+# -------------------------------------------------------------------------
+# UTIL
+# -------------------------------------------------------------------------
+
+func _update_debug_label() -> void:
+	if _debug_label == null:
+		return
+	var lines := PackedStringArray()
+	lines.append("FPS: %d" % Engine.get_frames_per_second())
+	if _mgr:
+		if _mgr.has_method("get_loaded_chunk_count"):
+			lines.append("Chunks: %s" % str(_mgr.call("get_loaded_chunk_count")))
+		if _mgr.has_method("get_active_block_updates"):
+			lines.append("Active Updates: %s" % str(_mgr.call("get_active_block_updates")))
+		if enable_time_of_day:
+			lines.append("Time: %02d:%02d" % [int(_clock_minutes/60.0), int(_clock_minutes)%60])
+	var txt := "\n".join(lines)
+	if "text" in _debug_label:
+		_debug_label.text = txt
+	elif _debug_label.has_method("set_text"):
+		_debug_label.call("set_text", txt)
+
+func _safe_load(p: String) -> Resource:
+	if p == null or p == "":
+		return null
+	if ResourceLoader.exists(p):
+		var r := load(p)
+		if r == null:
+			push_warning("[main] Failed to load resource at %s" % p)
+		return r
+	push_warning("[main] Resource not found: %s" % p)
+	return null

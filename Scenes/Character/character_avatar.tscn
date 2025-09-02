@@ -1,13 +1,6 @@
-[gd_scene load_steps=9 format=3 uid="uid://ojfpybxqac1f"]
+[gd_scene load_steps=2 format=3 uid="uid://ojfpybxqac1f"]
 
 [ext_resource type="Script" uid="uid://mt4wx4ajlty0" path="res://Scripts/character_controller.gd" id="1_xsf24"]
-[ext_resource type="Script" uid="uid://53thcfe1tap6" path="res://Scripts/avatar_camera.gd" id="2_c7qxo"]
-[ext_resource type="Script" uid="uid://d4da6qkj8cpe4" path="res://blocky_game/player/avatar_interaction.gd" id="3_6hlto"]
-[ext_resource type="Texture2D" uid="uid://c0wr4bmx2e43l" path="res://blocky_terrain/crosshair.png" id="4_edb68"]
-[ext_resource type="Script" uid="uid://cimxsikv7nw0d" path="res://blocky_terrain/center.gd" id="5_ow8fa"]
-[ext_resource type="PackedScene" uid="uid://bm2v4asqyh6a" path="res://blocky_game/player/character_visual.tscn" id="6_okklx"]
-[ext_resource type="PackedScene" path="res://blocky_game/gui/hotbar/hotbar.tscn" id="7_mcogg"]
-[ext_resource type="PackedScene" uid="uid://cg54toj1o7c2u" path="res://blocky_game/gui/inventory/inventory.tscn" id="8_lm4dl"]
 
 [node name="CharacterAvatar" type="Node3D"]
 script = ExtResource("1_xsf24")
@@ -22,18 +15,6 @@ current = true
 fov = 90.0
 near = 0.1
 far = 500.0
-script = ExtResource("2_c7qxo")
-sensitivity = 0.3
-
-[node name="Interaction" type="Node" parent="."]
-script = ExtResource("3_6hlto")
-terrain_path = null
-
-[node name="crosshair" type="Sprite2D" parent="."]
-visible = false
-position = Vector2(510.693, 285.793)
-texture = ExtResource("4_edb68")
-script = ExtResource("5_ow8fa")
 
 [node name="OmniLight" type="OmniLight3D" parent="."]
 visible = false
@@ -41,27 +22,4 @@ light_color = Color(1, 1, 0.533333, 1)
 omni_range = 10.0
 omni_attenuation = 2.54912
 
-[node name="CharacterVisual" parent="." instance=ExtResource("6_okklx")]
-
-[node name="CenterContainer" type="CenterContainer" parent="."]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-
-[node name="TextureRect" type="TextureRect" parent="CenterContainer"]
-layout_mode = 2
-mouse_filter = 2
-texture = ExtResource("4_edb68")
-
-[node name="HotBar" parent="." instance=ExtResource("7_mcogg")]
-anchors_preset = 12
-
-[node name="Inventory" parent="." instance=ExtResource("8_lm4dl")]
-visible = false
-anchors_preset = 15
-color = Color(0, 0, 0, 0.501961)
-
 [node name="VoxelViewer" type="VoxelViewer" parent="."]
-
-[connection signal="changed" from="Inventory" to="HotBar" method="_on_Inventory_changed"]

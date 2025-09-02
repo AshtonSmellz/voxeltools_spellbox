@@ -14,7 +14,7 @@
 [ext_resource type="ArrayMesh" uid="uid://xue4bt84vwsg" path="res://blocks/stairs/stairs_px.obj" id="12_ank5c"]
 [ext_resource type="ArrayMesh" uid="uid://b3t5agd28fn0v" path="res://blocks/stairs/stairs_pz.obj" id="13_1v0u0"]
 [ext_resource type="ArrayMesh" uid="uid://0i1jxsk65d0u" path="res://blocks/glass/glass.obj" id="14_vojeg"]
-[ext_resource type="Material" path="res://blocks/terrain_material_transparent.tres" id="15_1xtxe"]
+[ext_resource type="Material" uid="uid://b3uw5tdsbsmkn" path="res://blocks/terrain_material_transparent.tres" id="15_1xtxe"]
 [ext_resource type="ArrayMesh" uid="uid://ym6qkw5kje5g" path="res://blocks/water/water_top.obj" id="16_b04b3"]
 [ext_resource type="ArrayMesh" uid="uid://31q4wrlmcpbj" path="res://blocks/water/water_full.obj" id="17_hehi5"]
 [ext_resource type="ArrayMesh" uid="uid://bx3qdxx5wahaw" path="res://blocks/rail/rail_x.obj" id="18_e2qtx"]

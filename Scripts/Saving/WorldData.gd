@@ -1,67 +1,91 @@
-extends Resource
 class_name WorldData
+extends Resource
 
-@export var version: int = 1
+# Metadata for a saved world
+
 @export var world_name: String = "New World"
+@export var world_type: String = "default"  # default, flat, void, etc.
 @export var seed: int = 0
-@export var world_type: String = "default"  # default, flat, amplified, etc.
-@export var created: int = 0
-@export var last_played: int = 0
-@export var playtime: int = 0  # seconds
-@export var world_size: Vector3i = Vector3i(2048, 256, 2048)  # blocks
-@export var spawn_point: Vector3 = Vector3.ZERO
-@export var world_time: float = 0.0  # in-game time
-@export var difficulty: String = "normal"
+@export var creation_date: int = 0  # Unix timestamp
+@export var last_played: int = 0    # Unix timestamp
+@export var playtime: float = 0.0  # Total playtime in seconds
+@export var game_version: String = "1.0.0"
 
-# Game rules and settings
-@export var game_rules: Dictionary = {
-	"enable_magic": true,
-	"magic_decay_rate": 0.95,
-	"temperature_simulation": true,
-	"physics_simulation": true,
-	"block_updates": true
-}
+# Player data
+@export var player_position: Vector3 = Vector3.ZERO
+@export var player_rotation: Vector3 = Vector3.ZERO
+@export var player_inventory: Dictionary = {}  # Item ID -> quantity
 
-# World generation parameters
-@export var generation_params: Dictionary = {
-	"terrain_height_scale": 100.0,
-	"cave_frequency": 0.3,
-	"ore_density": 1.0,
-	"magical_crystal_rarity": 0.1
-}
-
-# Performance tracking
+# World statistics
 @export var statistics: Dictionary = {
+	"blocks_placed": 0,
+	"blocks_destroyed": 0,
+	"spells_cast": 0,
 	"chunks_generated": 0,
-	"blocks_modified": 0,
-	"magical_effects_cast": 0,
-	"player_deaths": 0
+	"distance_traveled": 0.0,
+}
+
+# World settings
+@export var settings: Dictionary = {
+	"difficulty": "normal",  # peaceful, easy, normal, hard
+	"enable_spells": true,
+	"enable_temperature": true,
+	"enable_physics": true,
+	"day_night_cycle": true,
+	"weather_enabled": true,
 }
 
 func _init():
-	if created == 0:
-		created = int(Time.get_unix_time_from_system())
-		last_played = created
-		seed = randi()
-
-func get_last_played_formatted() -> String:
-	if last_played <= 0:
-		return "Never"
-	var dt = Time.get_datetime_dict_from_unix_time(last_played)
-	return "%04d-%02d-%02d %02d:%02d" % [dt.year, dt.month, dt.day, dt.hour, dt.minute]
-
-func get_playtime_formatted() -> String:
-	if playtime <= 0:
-		return "0m"
-	var hours = playtime / 3600
-	var minutes = (playtime % 3600) / 60
-	if hours > 0:
-		return "%dh %dm" % [hours, minutes]
-	else:
-		return "%dm" % minutes
-
-func get_world_size_formatted() -> String:
-	return "%d × %d × %d" % [world_size.x, world_size.y, world_size.z]
+	creation_date = int(Time.get_unix_time_from_system())
+	last_played = creation_date
 
 func update_last_played():
 	last_played = int(Time.get_unix_time_from_system())
+
+func get_formatted_playtime() -> String:
+	var hours = int(playtime / 3600)
+	var minutes = int((playtime - hours * 3600) / 60)
+	var seconds = int(playtime - hours * 3600 - minutes * 60)
+	
+	if hours > 0:
+		return "%dh %dm %ds" % [hours, minutes, seconds]
+	elif minutes > 0:
+		return "%dm %ds" % [minutes, seconds]
+	else:
+		return "%ds" % seconds
+
+func get_formatted_creation_date() -> String:
+	return _format_timestamp(creation_date)
+
+func get_formatted_last_played() -> String:
+	return _format_timestamp(last_played)
+
+func _format_timestamp(timestamp: int) -> String:
+	if timestamp == 0:
+		return "Unknown"
+	
+	var datetime = Time.get_datetime_dict_from_unix_time(timestamp)
+	return "%02d/%02d/%04d %02d:%02d" % [
+		datetime.month,
+		datetime.day,
+		datetime.year,
+		datetime.hour,
+		datetime.minute
+	]
+
+func get_days_since_creation() -> int:
+	var current_time = Time.get_unix_time_from_system()
+	var seconds_passed = current_time - creation_date
+	return int(seconds_passed / 86400)  # 86400 seconds in a day
+
+func get_days_since_last_played() -> int:
+	var current_time = Time.get_unix_time_from_system()
+	var seconds_passed = current_time - last_played
+	return int(seconds_passed / 86400)
+
+func update_statistic(stat_name: String, value):
+	if statistics.has(stat_name):
+		if typeof(statistics[stat_name]) == TYPE_INT:
+			statistics[stat_name] += int(value)
+		elif typeof(statistics[stat_name]) == TYPE_FLOAT:
+			statistics[stat_name] += float(value)

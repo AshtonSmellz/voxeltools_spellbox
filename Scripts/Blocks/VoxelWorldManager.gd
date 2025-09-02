@@ -42,6 +42,7 @@ func _ready():
 	# Initialize systems
 	material_database = MaterialDatabase.new()
 	spell_system = SpellSystem.new()
+	spell_system.name = "SpellSystem"
 	add_child(spell_system)
 
 func _setup_voxel_library():
@@ -125,8 +126,9 @@ func _create_basic_voxel_library():
 
 func _process(delta):
 	# Update active spells
-	spell_system.update_spells(delta, self)
-	spell_system.process_modifications(self)
+	if spell_system:
+		spell_system.update_spells(delta, self)
+		spell_system.process_modifications(self)
 	
 	# Update physics simulation
 	if enable_physics_simulation:
