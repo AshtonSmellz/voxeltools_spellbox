@@ -10,7 +10,7 @@ const RADIUS = 100
 # How many voxels are affected per frame
 const VOXELS_PER_FRAME = 512
 
-@onready var _terrain : VoxelTerrain = get_node("../VoxelTerrain")
+@onready var _terrain : VoxelTerrain = get_node("../VoxelWorldManager/VoxelTerrain")
 @onready var _voxel_tool : VoxelToolTerrain = _terrain.get_voxel_tool()
 @onready var _players_container : Node = get_node("../Players")
 

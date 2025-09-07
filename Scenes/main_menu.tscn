@@ -9,19 +9,6 @@
 
 [node name="Main" type="Node"]
 script = ExtResource("1_48xlc")
-use_runtime_setup = null
-library_path = null
-mesher_path = null
-generator_path = null
-save_path = null
-world_seed = null
-initial_region_radius_chunks = null
-enable_game_tick = null
-game_tick_hz = null
-enable_random_tick = null
-random_tick_hz = null
-enable_time_of_day = null
-minutes_per_day = null
 
 [node name="MainMenu" type="Control" parent="."]
 layout_mode = 3
@@ -242,6 +229,10 @@ layout_mode = 2
 [node name="Exit" type="PanelContainer" parent="MainMenu/CenterContainer"]
 layout_mode = 2
 
+[connection signal="connect_to_server_requested" from="MainMenu" to="." method="_on_main_menu_connect_to_server_requested"]
+[connection signal="host_server_requested" from="MainMenu" to="." method="_on_main_menu_host_server_requested"]
+[connection signal="singleplayer_requested" from="MainMenu" to="." method="_on_main_menu_singleplayer_requested"]
+[connection signal="upnp_toggled" from="MainMenu" to="." method="_on_main_menu_upnp_toggled"]
 [connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button1" to="MainMenu" method="_on_singleplayer_pressed"]
 [connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button2" to="MainMenu" method="_on_multiplayer_pressed"]
 [connection signal="pressed" from="MainMenu/CenterContainer/HomeScreen/VBoxContainer/Button3" to="MainMenu" method="_on_settings_pressed"]

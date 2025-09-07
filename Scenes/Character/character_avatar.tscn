@@ -3,8 +3,9 @@
 [ext_resource type="Script" uid="uid://mt4wx4ajlty0" path="res://Scripts/character_controller.gd" id="1_xsf24"]
 
 [node name="CharacterAvatar" type="Node3D"]
+transform = Transform3D(3.5, 0, 0, 0, 3.5, 0, 0, 0, 3.5, 0, 0, 0)
 script = ExtResource("1_xsf24")
-speed = 6.0
+speed = 7.0
 gravity = 40.0
 jump_force = 10.0
 head = NodePath("Camera")
@@ -23,3 +24,9 @@ omni_range = 10.0
 omni_attenuation = 2.54912
 
 [node name="VoxelViewer" type="VoxelViewer" parent="."]
+view_distance = 384
+
+[node name="CSGBox3D" type="CSGBox3D" parent="."]
+transform = Transform3D(0.35, 0, 0, 0, 1, 0, 0, 0, 0.35, 0, 0.396038, 0)
+visibility_range_begin = 0.3
+size = Vector3(1, 0.789765, 1)

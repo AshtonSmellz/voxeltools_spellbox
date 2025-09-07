@@ -1,8 +1,9 @@
-[gd_scene load_steps=8 format=3 uid="uid://dptcqq5uxa4jh"]
+[gd_scene load_steps=9 format=3 uid="uid://dptcqq5uxa4jh"]
 
 [ext_resource type="Script" uid="uid://dcgob33gibv62" path="res://Scripts/Blocks/VoxelWorldManager.gd" id="1_qvgq0"]
-[ext_resource type="VoxelGeneratorNoise" uid="uid://dejn02lbo72ui" path="res://voxeltools_spellbox_fixed/VoxelToolFiles/world_gen.tres" id="2_alii3"]
-[ext_resource type="VoxelMesherBlocky" uid="uid://c7crvpq63j0hh" path="res://voxeltools_spellbox_fixed/VoxelToolFiles/voxel_mesher_blocky.tres" id="2_qvgq0"]
+[ext_resource type="VoxelGeneratorNoise" uid="uid://bigl0af32f6x5" path="res://VoxelToolFiles/voxel_generator_noise.tres" id="2_alii3"]
+[ext_resource type="VoxelMesherBlocky" uid="uid://c7crvpq63j0hh" path="res://VoxelToolFiles/voxel_mesher_blocky.tres" id="2_qvgq0"]
+[ext_resource type="Material" uid="uid://cae2ptfgpiw7d" path="res://materials/voxel_atlas_material.tres" id="4_hy2kt"]
 
 [sub_resource type="GDScript" id="GDScript_0nejw"]
 script/source = "extends Node
@@ -19,7 +20,7 @@ const RemoteCharacterScene = preload(\"res://Scenes/Character/remote_character.t
 #const WaterUpdater = preload(\"./water.gd\")
 
 @onready var _light : DirectionalLight3D = $DirectionalLight3D
-@onready var _terrain : VoxelTerrain = $VoxelTerrain
+@onready var _terrain : VoxelTerrain = $VoxelWorldManager/VoxelTerrain
 @onready var _characters_container : Node = $Players
 
 var _network_mode := NETWORK_MODE_SINGLEPLAYER
@@ -269,7 +270,8 @@ script = ExtResource("1_qvgq0")
 [node name="VoxelTerrain" type="VoxelTerrain" parent="VoxelWorldManager"]
 generator = ExtResource("2_alii3")
 mesher = ExtResource("2_qvgq0")
-gi_mode = 1
+gi_mode = 2
+material_override = ExtResource("4_hy2kt")
 run_stream_in_editor = false
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]

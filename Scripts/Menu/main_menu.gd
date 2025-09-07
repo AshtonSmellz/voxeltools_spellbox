@@ -14,6 +14,9 @@ extends Control
 @onready var settingsContainer = $CenterContainer/Settings
 @onready var creditsContainer = $CenterContainer/Credits
 
+# Game world container (created programmatically)
+var gameWorldContainer: Control
+
 # Game state tracking
 var selected_character: CharacterData
 var selected_world_id: String
@@ -33,6 +36,9 @@ signal upnp_toggled(pressed: bool)
 signal game_ready_to_start(character: CharacterData, world_id: String, world_data: WorldData, mode: String)
 
 func _ready():
+	# Create game world container
+	_create_game_world_container()
+	
 	# Connect character select signals
 	var character_select = characterSelectContainer
 	if character_select.has_signal("character_chosen"):
@@ -46,6 +52,9 @@ func _ready():
 		world_select.world_chosen.connect(_on_world_chosen)
 	if world_select.has_signal("back_pressed"):
 		world_select.back_pressed.connect(_on_world_back_pressed)
+		
+	# Connect game ready signal
+	game_ready_to_start.connect(_on_game_ready_to_start)
 
 # Home Screen Navigation
 func _on_singleplayer_pressed() -> void:
@@ -248,8 +257,143 @@ func _hide_all_containers():
 	multiplayerContainer.visible = false
 	settingsContainer.visible = false
 	creditsContainer.visible = false
+	if gameWorldContainer:
+		gameWorldContainer.visible = false
+	
+	# Hide game UI when not in game
+	var hotbar = find_child("HotbarUI", false, false)
+	if hotbar:
+		hotbar.visible = false
+	
+	var inventory_ui = find_child("InventoryUI", false, false)
+	if inventory_ui:
+		inventory_ui.visible = false
 
 # Credits button (connected in scene)
 func _on_credits_pressed():
 	_hide_all_containers()
 	creditsContainer.visible = true
+
+# Game World Management
+func _create_game_world_container():
+	# Create the game world container
+	gameWorldContainer = Control.new()
+	gameWorldContainer.name = "GameWorldContainer"
+	gameWorldContainer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	gameWorldContainer.visible = false
+	
+	# Add it to the same parent as other containers
+	var parent = homescreenContainer.get_parent()
+	parent.add_child(gameWorldContainer)
+	
+	# Load the game world scene
+	var game_world_scene = load("res://Scenes/game_world.tscn")
+	if game_world_scene:
+		var game_world_instance = game_world_scene.instantiate()
+		gameWorldContainer.add_child(game_world_instance)
+		
+		# Add inventory manager to game world
+		var inventory_manager = InventoryManager.new()
+		inventory_manager.name = "InventoryManager"
+		var starting_items: Array[String] = ["stone", "wood", "pickaxe", "bread"]
+		inventory_manager.initial_items = starting_items
+		game_world_instance.add_child(inventory_manager)
+		
+		# Move hotbar to main menu root for proper screen positioning
+		var hotbar = inventory_manager.hotbar_ui
+		inventory_manager.remove_child(hotbar)
+		# Add hotbar to the main menu itself (this node), not gameWorldContainer
+		add_child(hotbar)
+		
+		# Anchor hotbar to bottom center of screen
+		hotbar.anchor_left = 0.5
+		hotbar.anchor_right = 0.5
+		hotbar.anchor_top = 1.0
+		hotbar.anchor_bottom = 1.0
+		
+		# Wait one frame for proper sizing, then position
+		await get_tree().process_frame
+		
+		# Center horizontally and position from bottom
+		# Calculate proper width: 6 slots * 64px + 5 gaps * 4px + background padding
+		var slot_width = 64
+		var gap_width = 4
+		var background_padding = 16
+		var total_width = (slot_width * 6) + (gap_width * 5) + background_padding
+		
+		hotbar.offset_left = -total_width / 2
+		hotbar.offset_right = total_width / 2
+		hotbar.offset_top = -80  # 80px from bottom
+		hotbar.offset_bottom = -16  # 16px from bottom
+		
+		print("Hotbar positioned at bottom center, anchors set to bottom, offset_top: ", hotbar.offset_top)
+		
+		# Move inventory UI to main menu root for proper screen positioning
+		var inventory_ui = inventory_manager.inventory_ui
+		inventory_manager.remove_child(inventory_ui)
+		add_child(inventory_ui)
+		
+		# Wait one frame for proper sizing, then center on screen
+		await get_tree().process_frame
+		
+		# Anchor to screen center
+		inventory_ui.anchor_left = 0.5
+		inventory_ui.anchor_right = 0.5
+		inventory_ui.anchor_top = 0.5
+		inventory_ui.anchor_bottom = 0.5
+		
+		# Center using calculated size
+		var inv_width = inventory_ui.size.x if inventory_ui.size.x > 0 else 440  # fallback size
+		var inv_height = inventory_ui.size.y if inventory_ui.size.y > 0 else 340
+		inventory_ui.offset_left = -inv_width / 2
+		inventory_ui.offset_right = inv_width / 2
+		inventory_ui.offset_top = -inv_height / 2
+		inventory_ui.offset_bottom = inv_height / 2
+		
+		print("Inventory centered on screen, size: ", inventory_ui.size)
+	else:
+		print("WARNING: Could not load game_world.tscn")
+
+func _on_game_ready_to_start(character: CharacterData, world_id: String, world_data: WorldData, mode: String):
+	print("Transitioning to game world...")
+	
+	# Load the world data using WorldSaveSystem
+	var success = WorldSaveSystem.load_world(world_id)
+	if not success:
+		_show_error_dialog("Load Error", "Failed to load world: " + world_data.world_name)
+		return
+	
+	# Hide all menu containers and show game world
+	_hide_all_containers()
+	gameWorldContainer.visible = true
+	
+	# Show game UI when entering game
+	var hotbar = find_child("HotbarUI", false, false)
+	if hotbar:
+		hotbar.visible = true
+	
+	var inventory_ui = find_child("InventoryUI", false, false)
+	if inventory_ui:
+		inventory_ui.visible = true
+		# Start with inventory hidden (player opens with Tab)
+		inventory_ui.hide_inventory()
+	
+	# Capture mouse for FPS gameplay
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	
+	# TODO: Initialize the game world with character and world data
+	print("Game world active - Character: %s, World: %s, Mode: %s" % [character.name, world_data.world_name, mode])
+
+func return_to_menu():
+	"""Call this function to return from game world to menu"""
+	# Release mouse capture
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	
+	_hide_all_containers()
+	homescreenContainer.visible = true
+
+func _input(event):
+	# Allow ESC to return to menu from game world
+	if event.is_action_pressed("ui_cancel") and gameWorldContainer and gameWorldContainer.visible:
+		return_to_menu()
+		get_viewport().set_input_as_handled()

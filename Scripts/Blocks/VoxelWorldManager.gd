@@ -19,13 +19,26 @@ signal voxel_modified(world_pos: Vector3i)
 signal voxel_destroyed(world_pos: Vector3i, material_id: int)
 
 func _ready():
+	print("VoxelWorldManager _ready() called")
+	print("voxel_terrain_path: ", voxel_terrain_path)
+	print("Parent node: ", get_parent())
+	print("Parent children: ", get_parent().get_children().map(func(n): return n.name + " (" + n.get_class() + ")"))
+	
 	# Get VoxelTerrain node
 	if voxel_terrain_path:
 		voxel_terrain = get_node(voxel_terrain_path)
+		print("Found via path: ", voxel_terrain)
 	
 	if not voxel_terrain:
 		# Try to find it as sibling
 		voxel_terrain = get_parent().get_node_or_null("VoxelTerrain")
+		print("Found as sibling: ", voxel_terrain)
+	
+	if not voxel_terrain:
+		# Search more broadly
+		print("Searching for VoxelTerrain in scene tree...")
+		voxel_terrain = _find_voxel_terrain_recursive(get_tree().current_scene)
+		print("Found via search: ", voxel_terrain)
 	
 	if not voxel_terrain:
 		push_error("VoxelWorldManager: No VoxelTerrain found! Please set the voxel_terrain_path or ensure VoxelTerrain exists as a sibling node.")
@@ -44,6 +57,9 @@ func _ready():
 	spell_system = SpellSystem.new()
 	spell_system.name = "SpellSystem"
 	add_child(spell_system)
+	
+	# Connect voxel destruction signal to item drop creation
+	voxel_destroyed.connect(_on_voxel_destroyed)
 
 func _setup_voxel_library():
 	# Create or get the voxel library
@@ -115,8 +131,8 @@ func _create_basic_voxel_library():
 		mat.albedo_color = data.color
 		if data.has("transparent") and data.transparent:
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			model.transparent = true
-			model.transparency_index = i
+			# Note: VoxelBlockyModelCube doesn't have 'transparent' property
+			# Transparency is handled through the material settings
 		
 		model.set_material_override(0, mat)
 		voxel_library.add_model(model)
@@ -252,15 +268,23 @@ func _update_physics_simulation(delta: float):
 func _handle_melting(world_pos: Vector3i, voxel: Dictionary, material: StaticMaterialProperties):
 	# Convert to liquid variant
 	match voxel.id:
-		1:  # Stone -> Lava
-			set_voxel_at_pos(world_pos, 6, voxel.properties)
-		2:  # Wood -> Destroy (burns)
+		1:  # Dirt -> Destroy (organic matter burns)
 			set_voxel_at_pos(world_pos, 0)
 			voxel_destroyed.emit(world_pos, voxel.id)
-		3:  # Iron -> Lava
-			set_voxel_at_pos(world_pos, 6, voxel.properties)
-		4:  # Glass -> Lava
-			set_voxel_at_pos(world_pos, 6, voxel.properties)
+		2:  # Grass -> Destroy (burns)
+			set_voxel_at_pos(world_pos, 0)
+			voxel_destroyed.emit(world_pos, voxel.id)
+		3:  # Sand -> Glass (melted sand becomes glass)
+			set_voxel_at_pos(world_pos, 7, voxel.properties)
+		4:  # Stone -> Lava
+			set_voxel_at_pos(world_pos, 9, voxel.properties)
+		5:  # Wood -> Destroy (burns)
+			set_voxel_at_pos(world_pos, 0)
+			voxel_destroyed.emit(world_pos, voxel.id)
+		6:  # Iron -> Lava
+			set_voxel_at_pos(world_pos, 9, voxel.properties)
+		7:  # Glass -> Lava
+			set_voxel_at_pos(world_pos, 9, voxel.properties)
 		_:
 			# Default: destroy
 			set_voxel_at_pos(world_pos, 0)
@@ -269,11 +293,10 @@ func _handle_melting(world_pos: Vector3i, voxel: Dictionary, material: StaticMat
 func _handle_freezing(world_pos: Vector3i, voxel: Dictionary, material: StaticMaterialProperties):
 	# Convert to solid variant
 	match voxel.id:
-		5:  # Water -> Ice (you'd need to add ice to your materials)
-			# For now, just make it stone
-			set_voxel_at_pos(world_pos, 1, voxel.properties)
-		6:  # Lava -> Stone
-			set_voxel_at_pos(world_pos, 1, voxel.properties)
+		8:  # Water -> Ice (we'll make it stone for now)
+			set_voxel_at_pos(world_pos, 4, voxel.properties)
+		9:  # Lava -> Stone
+			set_voxel_at_pos(world_pos, 4, voxel.properties)
 
 # Update temperature propagation
 func _update_temperature_propagation(delta: float):
@@ -387,3 +410,237 @@ func edit_box(min_pos: Vector3i, max_pos: Vector3i, material_id: int, props: Dyn
 					var pos = Vector3i(x, y, z)
 					voxel_tool.pos = pos
 					voxel_tool.set_voxel_metadata(props.to_metadata())
+
+func set_world_seed(seed: int):
+	if voxel_terrain and voxel_terrain.generator:
+		if voxel_terrain.generator is VoxelGeneratorNoise:
+			var noise_gen = voxel_terrain.generator as VoxelGeneratorNoise
+			if noise_gen.noise:
+				noise_gen.noise.seed = seed
+				print("Set world seed to: ", seed)
+		elif voxel_terrain.generator is VoxelGeneratorFlat:
+			print("Flat generator doesn't use seed")
+		elif voxel_terrain.generator is SimpleWorldGenerator:
+			var simple_gen = voxel_terrain.generator as SimpleWorldGenerator
+			simple_gen.set_seed(seed)
+			print("Set simple world generator seed to: ", seed)
+		else:
+			print("Unknown generator type, cannot set seed")
+	else:
+		print("No voxel terrain or generator found to set seed")
+
+func setup_comprehensive_generation():
+	if not voxel_terrain:
+		print("No voxel terrain to setup generation for")
+		return
+	
+	# Create simple 4-block generator
+	var simple_generator = SimpleWorldGenerator.new()
+	voxel_terrain.generator = simple_generator
+	
+	print("Set up simple 4-block world generation (air, dirt, grass, sand)")
+	
+	# Note: Removed structure generation for simplicity
+
+func _on_chunk_loaded(position: Vector3i, lod: int):
+	if lod != 0:
+		return  # Only process highest detail chunks
+	
+	# Occasionally place structures in loaded chunks
+	var structure_chance = randf()
+	
+	if structure_chance < 0.01:  # 1% chance
+		var structure_pos = position + Vector3i(8, 0, 8)  # Center of chunk
+		
+		# Find surface height
+		var surface_y = _find_surface_height(structure_pos.x, structure_pos.z)
+		if surface_y > 0:
+			structure_pos.y = surface_y + 1
+			
+			# Choose random structure
+			var structures = ["cabin", "mine_entrance", "bridge", "rail_track"]
+			var chosen_structure = structures[randi() % structures.size()]
+			
+			StructureGenerator.place_structure(voxel_tool, chosen_structure, structure_pos)
+			print("Placed ", chosen_structure, " at ", structure_pos)
+
+func _find_surface_height(x: int, z: int) -> int:
+	# Scan downward to find surface
+	for y in range(128, 0, -1):
+		voxel_tool.pos = Vector3i(x, y, z)
+		var voxel_id = voxel_tool.get_voxel()
+		if voxel_id != 0:  # Found solid block
+			return y
+	return 64  # Default to sea level
+
+func regenerate_with_seed(seed: int):
+	set_world_seed(seed)
+	if voxel_terrain:
+		# Clear any existing voxel data
+		if voxel_terrain.has_method("clear_cached_blocks"):
+			voxel_terrain.clear_cached_blocks()
+		elif voxel_terrain.has_method("clear_blocks"):
+			voxel_terrain.clear_blocks()
+		
+		# Clear the database file to force full regeneration
+		if voxel_terrain.stream and voxel_terrain.stream is VoxelStreamSQLite:
+			var sqlite_stream = voxel_terrain.stream as VoxelStreamSQLite
+			var db_path = sqlite_stream.database_path
+			print("Clearing voxel database: ", db_path)
+			
+			# Close the current stream
+			voxel_terrain.stream = null
+			
+			# Delete the database file if it exists
+			if FileAccess.file_exists(db_path):
+				DirAccess.remove_absolute(db_path)
+			
+			# Create a new stream
+			var new_stream = VoxelStreamSQLite.new()
+			new_stream.database_path = db_path
+			voxel_terrain.stream = new_stream
+		
+		# Restart the stream to use new seed
+		if voxel_terrain.has_method("restart_stream"):
+			voxel_terrain.restart_stream()
+		elif voxel_terrain.has_method("reload_stream"):
+			voxel_terrain.reload_stream()
+		else:
+			# Try to force reload by setting stream again
+			var current_stream = voxel_terrain.stream
+			voxel_terrain.stream = null
+			voxel_terrain.stream = current_stream
+		
+		# Force regeneration around player if possible
+		if voxel_terrain.has_method("pregenerate_region"):
+			voxel_terrain.pregenerate_region(Vector3.ZERO, 4)
+		
+		print("Regenerated world with seed: ", seed)
+
+func _find_voxel_terrain_recursive(node: Node) -> Node:
+	# Check if this node is a VoxelTerrain
+	if node.get_class() == "VoxelTerrain" or node.get_class() == "VoxelLodTerrain":
+		return node
+	
+	# Search children recursively
+	for child in node.get_children():
+		var result = _find_voxel_terrain_recursive(child)
+		if result:
+			return result
+	
+	return null
+
+# Handle voxel destruction by creating item drops
+func _on_voxel_destroyed(world_pos: Vector3i, material_id: int):
+	_create_item_drop_for_voxel(material_id, world_pos)
+
+func _create_item_drop_for_voxel(voxel_id: int, world_pos: Vector3i):
+	# Map voxel IDs to item IDs based on MaterialDatabase
+	var item_id = _voxel_id_to_item_id(voxel_id)
+	if item_id.is_empty():
+		return
+	
+	# Find inventory manager to get item data
+	var inventory_manager = get_tree().current_scene.find_child("InventoryManager", true, false) as InventoryManager
+	if not inventory_manager:
+		print("Warning: No InventoryManager found for item drops")
+		return
+	
+	var item = inventory_manager.get_item_by_id(item_id)
+	if not item:
+		print("Warning: Unknown item ID for voxel: ", item_id)
+		return
+	
+	# Create item stack
+	var item_stack = ItemStack.new(item, 1)
+	
+	# Convert voxel position to world position (center of voxel)
+	var world_position = Vector3(world_pos) + Vector3(0.5, 0.5, 0.5)
+	
+	# Create and spawn item drop
+	var item_drop = ItemDrop.create_item_drop(item_stack, world_position)
+	get_tree().current_scene.add_child(item_drop)
+	
+	# Add some random velocity to make it look natural
+	var random_velocity = Vector3(
+		randf_range(-2, 2),
+		randf_range(2, 4),
+		randf_range(-2, 2)
+	)
+	item_drop.linear_velocity = random_velocity
+	
+	print("Created item drop: ", item_id, " at ", world_position)
+
+func _voxel_id_to_item_id(voxel_id: int) -> String:
+	# Mapping based on MaterialDatabase IDs
+	match voxel_id:
+		1:
+			return "dirt"
+		2:
+			return "grass"
+		3:
+			return "sand"
+		4:
+			return "stone"
+		5:
+			return "wood"
+		6:
+			return "iron"
+		7:
+			return "glass"
+		8:
+			return "water"
+		9:
+			return "lava"
+		_:
+			return ""  # Unknown material, don't drop anything
+
+func clear_world_and_regenerate():
+	"""Clear all voxel data and regenerate from scratch with current generator"""
+	print("clear_world_and_regenerate() called")
+	if voxel_terrain:
+		print("Found voxel_terrain: ", voxel_terrain)
+		print("Current generator: ", voxel_terrain.generator)
+		
+		# Force setup of our SimpleWorldGenerator
+		setup_comprehensive_generation()
+		print("Reset generator to: ", voxel_terrain.generator)
+		
+		# Save any pending modifications first
+		voxel_terrain.save_modified_blocks()
+		print("Saved pending modifications")
+		
+		# Clear the database if it exists
+		if voxel_terrain.stream and voxel_terrain.stream is VoxelStreamSQLite:
+			var sqlite_stream = voxel_terrain.stream as VoxelStreamSQLite
+			var db_path = sqlite_stream.database_path
+			print("Clearing world voxel database: ", db_path)
+			
+			# Delete database file to force regeneration
+			if FileAccess.file_exists(db_path):
+				var success = DirAccess.remove_absolute(db_path)
+				print("Database file deletion result: ", success)
+			
+			# Create fresh stream
+			var new_stream = VoxelStreamSQLite.new()
+			new_stream.database_path = db_path
+			voxel_terrain.stream = new_stream
+			print("Created fresh SQLite stream")
+		else:
+			# Create a new SQLite stream for saving
+			var temp_dir = "user://temp_world/"
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(temp_dir))
+			var new_stream = VoxelStreamSQLite.new()
+			new_stream.database_path = temp_dir + "voxels.sqlite"
+			voxel_terrain.stream = new_stream
+			print("Created new SQLite stream: ", new_stream.database_path)
+		
+		# Force terrain to reload by moving player or triggering chunk reload
+		var player_pos = Vector3.ZERO
+		if voxel_terrain.has_method("pregenerate_region"):
+			voxel_terrain.pregenerate_region(player_pos, 2)
+			print("Forced pregeneration around ", player_pos)
+		
+		print("Cleared world and forced regeneration")
+	else:
+		print("ERROR: No voxel_terrain found!")

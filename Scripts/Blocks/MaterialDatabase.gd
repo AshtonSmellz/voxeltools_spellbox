@@ -12,23 +12,63 @@ func _initialize_default_materials():
 	air.configure_as_air()
 	register_material(air)
 	
-	# Stone (ID: 1)
-	var stone = StaticMaterialProperties.new(1, "Stone")
+	# Dirt (ID: 1) - matches SimpleWorldGenerator
+	var dirt = StaticMaterialProperties.new(1, "Dirt")
+	dirt.material_name = "Dirt"
+	dirt.density = 1.5
+	dirt.melting_temp = 1500.0
+	dirt.freezing_temp = 273.0
+	dirt.conductivity_breakdown_temperature = 800.0
+	dirt.transmutation_value = 1.0
+	dirt.default_dynamic_properties.set_toughness(DynamicVoxelProperties.Toughness.STONE)
+	dirt.default_dynamic_properties.set_elasticity(DynamicVoxelProperties.Elasticity.PLIANT)
+	dirt.base_color = Color(0.4, 0.3, 0.2)
+	register_material(dirt)
+	
+	# Grass (ID: 2) - matches SimpleWorldGenerator  
+	var grass = StaticMaterialProperties.new(2, "Grass")
+	grass.material_name = "Grass"
+	grass.density = 1.3
+	grass.melting_temp = 800.0  # Burns easily
+	grass.freezing_temp = 273.0
+	grass.conductivity_breakdown_temperature = 600.0
+	grass.transmutation_value = 1.5
+	grass.default_dynamic_properties.set_toughness(DynamicVoxelProperties.Toughness.WEAK)
+	grass.default_dynamic_properties.set_elasticity(DynamicVoxelProperties.Elasticity.BOUNCY)
+	grass.base_color = Color(0.2, 0.7, 0.2)
+	register_material(grass)
+	
+	# Sand (ID: 3) - matches SimpleWorldGenerator
+	var sand = StaticMaterialProperties.new(3, "Sand")
+	sand.material_name = "Sand"
+	sand.density = 1.6
+	sand.melting_temp = 1700.0  # High melting point (becomes glass)
+	sand.freezing_temp = 273.0
+	sand.conductivity_breakdown_temperature = 1000.0
+	sand.transmutation_value = 2.0
+	sand.default_dynamic_properties.set_toughness(DynamicVoxelProperties.Toughness.VERY_WEAK)
+	sand.default_dynamic_properties.set_elasticity(DynamicVoxelProperties.Elasticity.RIGID)
+	sand.base_color = Color(0.9, 0.8, 0.6)
+	register_material(sand)
+	
+	# Keep some additional materials for later use
+	# Stone (ID: 4) 
+	var stone = StaticMaterialProperties.new(4, "Stone")
 	stone.configure_as_stone()
 	register_material(stone)
 	
-	# Wood (ID: 2)
-	var wood = StaticMaterialProperties.new(2, "Wood")
+	# Wood (ID: 5)
+	var wood = StaticMaterialProperties.new(5, "Wood")
 	wood.configure_as_wood()
 	register_material(wood)
 	
-	# Iron (ID: 3)
-	var iron = StaticMaterialProperties.new(3, "Iron")
+	# Iron (ID: 6)
+	var iron = StaticMaterialProperties.new(6, "Iron")
 	iron.configure_as_iron()
 	register_material(iron)
 	
-	# Glass (ID: 4)
-	var glass = StaticMaterialProperties.new(4, "Glass")
+	# Glass (ID: 7)
+	var glass = StaticMaterialProperties.new(7, "Glass")
 	glass.material_name = "Glass"
 	glass.density = 2.5
 	glass.melting_temp = 1700.0
@@ -41,8 +81,8 @@ func _initialize_default_materials():
 	glass.base_reflectivity = 0.8
 	register_material(glass)
 	
-	# Water (ID: 5)
-	var water = StaticMaterialProperties.new(5, "Water")
+	# Water (ID: 8)
+	var water = StaticMaterialProperties.new(8, "Water")
 	water.material_name = "Water"
 	water.density = 1.0
 	water.melting_temp = 273.0
@@ -54,8 +94,8 @@ func _initialize_default_materials():
 	water.base_color = Color(0.2, 0.4, 0.8, 0.7)
 	register_material(water)
 	
-	# Lava (ID: 6)
-	var lava = StaticMaterialProperties.new(6, "Lava")
+	# Lava (ID: 9)
+	var lava = StaticMaterialProperties.new(9, "Lava")
 	lava.material_name = "Lava"
 	lava.density = 3.0
 	lava.melting_temp = INF  # Already melted

@@ -70,8 +70,12 @@ func _ready() -> void:
 	_setup_timers()
 	
 	# Connect VoxelWorldManager to WorldSaveSystem singleton
+	print("Manager found: ", _mgr, " Type: ", _mgr.get_class() if _mgr else "null")
 	if _mgr is VoxelWorldManager:
+		print("Setting VoxelWorldManager in WorldSaveSystem")
 		WorldSaveSystem.set_voxel_world_manager(_mgr)
+	else:
+		print("Manager is not VoxelWorldManager type")
 	
 	_bootstrap_world()
 	print("[main] Initialization complete.")
@@ -144,6 +148,7 @@ func _position_player_at_spawn(p: Node) -> void:
 		var sp := get_node_or_null(player_spawn_path)
 		if sp and sp is Node3D and p is Node3D:
 			p.global_transform = sp.global_transform
+			p._game_ready = true
 
 func _configure_world() -> void:
 	var lib := _safe_load(library_path)
@@ -259,6 +264,18 @@ func _process(_dt: float) -> void:
 	_update_debug_label()
 
 func _input(event: InputEvent) -> void:
+	# Handle regeneration hotkey for testing
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_R and (event.ctrl_pressed or event.cmd_pressed):
+			print("Regenerating world with current generators...")
+			if _mgr and _mgr.has_method("clear_world_and_regenerate"):
+				print("Calling clear_world_and_regenerate directly on manager")
+				_mgr.clear_world_and_regenerate()
+			else:
+				print("Trying WorldSaveSystem...")
+				WorldSaveSystem.regenerate_current_world()
+			return
+	
 	# Forward input to manager if it wants it
 	if _mgr and _mgr.has_method("_input_from_main"):
 		_mgr.call("_input_from_main", event)

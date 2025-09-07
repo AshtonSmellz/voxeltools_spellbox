@@ -60,6 +60,11 @@ func create_world(world_name: String, world_type: String = "default", seed: int 
 		var stream = VoxelStreamSQLite.new()
 		stream.database_path = world_path + "voxels.sqlite"
 		voxel_world_manager.voxel_terrain.stream = stream
+		
+		# Setup comprehensive generation and set seed
+		voxel_world_manager.setup_comprehensive_generation()
+		voxel_world_manager.set_world_seed(world_data.seed)
+		
 		print("Configured VoxelStream SQLite at: ", stream.database_path)
 	
 	# Save initial world data
@@ -74,6 +79,10 @@ func create_world(world_name: String, world_type: String = "default", seed: int 
 	current_world_path = world_path
 	
 	print("Created world: ", world_name, " at ", world_path)
+	
+	# Signal game ready for new world too with delay
+	call_deferred("_signal_game_ready_delayed")
+	
 	return world_data
 
 func load_world(world_id: String) -> bool:
@@ -100,8 +109,16 @@ func load_world(world_id: String) -> bool:
 		stream.database_path = world_path + "voxels.sqlite"
 		voxel_world_manager.voxel_terrain.stream = stream
 		
-		# Force reload of voxel data
-		voxel_world_manager.voxel_terrain.restart_stream()
+		# Setup comprehensive generation and set seed
+		voxel_world_manager.setup_comprehensive_generation()
+		voxel_world_manager.set_world_seed(world_data.seed)
+		
+		# Check if database exists - if not, it will generate fresh
+		# If it exists, it will load the saved data
+		if voxel_world_manager.voxel_terrain.has_method("restart_stream"):
+			voxel_world_manager.voxel_terrain.restart_stream()
+		elif voxel_world_manager.voxel_terrain.has_method("reload_stream"):
+			voxel_world_manager.voxel_terrain.reload_stream()
 		print("Loaded voxel database from: ", stream.database_path)
 	
 	# Load global data (active spells, etc.)
@@ -111,6 +128,10 @@ func load_world(world_id: String) -> bool:
 	_load_all_properties()
 	
 	print("Loaded world: ", world_data.world_name)
+	
+	# Signal game ready and set player spawn with delay
+	call_deferred("_signal_game_ready_delayed")
+	
 	world_loaded.emit(true)
 	return true
 
@@ -353,6 +374,24 @@ func delete_world(world_id: String) -> bool:
 	var world_path = WORLDS_DIR + world_id + "/"
 	return _delete_directory_recursive(world_path)
 
+# Force regeneration of current world with new generator changes
+func regenerate_current_world():
+	print("regenerate_current_world() called")
+	if voxel_world_manager:
+		print("Found voxel_world_manager, calling clear_world_and_regenerate()")
+		voxel_world_manager.clear_world_and_regenerate()
+		print("Regenerated current world with updated generators")
+	else:
+		print("ERROR: No voxel_world_manager found!")
+
+# Load world but force regeneration (useful for testing generator changes)
+func load_world_with_regeneration(world_id: String) -> bool:
+	var success = load_world(world_id)
+	if success and voxel_world_manager:
+		voxel_world_manager.clear_world_and_regenerate()
+		print("Loaded world and forced regeneration")
+	return success
+
 func _delete_directory_recursive(path: String) -> bool:
 	var dir = DirAccess.open(path)
 	if dir == null:
@@ -415,3 +454,111 @@ func format_file_size(bytes: int) -> String:
 		return "%.1f MB" % (bytes / (1024.0 * 1024.0))
 	else:
 		return "%.2f GB" % (bytes / (1024.0 * 1024.0 * 1024.0))
+
+func _signal_game_ready():
+	print("_signal_game_ready called - looking for player...")
+	
+	# Try multiple ways to find the character controller
+	var character_controller = null
+	
+	# Method 1: Find by name "Player"
+	character_controller = get_tree().current_scene.find_child("Player", true, false)
+	if character_controller:
+		print("Found player by name: ", character_controller.name)
+	
+	# Method 2: Look for any node with character_controller script
+	if not character_controller:
+		var all_nodes = get_tree().current_scene.get_children()
+		for node in all_nodes:
+			if node.get_script() and node.get_script().resource_path.ends_with("character_controller.gd"):
+				character_controller = node
+				print("Found character controller by script: ", node.name)
+				break
+	
+	# Method 3: Look in main node children
+	if not character_controller:
+		var main_node = get_tree().current_scene
+		print("Current scene: ", main_node.name)
+		print("Scene children: ", main_node.get_children().map(func(n): return n.name))
+		for child in main_node.get_children():
+			for grandchild in child.get_children():
+				if grandchild.name.begins_with("Player") or grandchild.has_method("enable_game_ready"):
+					character_controller = grandchild
+					print("Found player in child nodes: ", grandchild.name)
+					break
+			if character_controller:
+				break
+	
+	if character_controller:
+		print("Character controller found: ", character_controller.name)
+		print("Has enable_game_ready method: ", character_controller.has_method("enable_game_ready"))
+		print("Has set_spawn_position method: ", character_controller.has_method("set_spawn_position"))
+		
+		if character_controller.has_method("enable_game_ready"):
+			# Set spawn position - for now use a safe default height
+			var spawn_pos = Vector3(0, 64, 0)  # Default spawn at y=64
+			if character_controller.has_method("set_spawn_position"):
+				character_controller.call("set_spawn_position", spawn_pos)
+			
+			# Enable physics and movement
+			character_controller.call("enable_game_ready")
+			print("Game ready - enabled character controller at spawn position: ", spawn_pos)
+		else:
+			print("Character controller missing enable_game_ready method")
+	else:
+		print("No character controller found anywhere in scene tree")
+
+func _signal_game_ready_delayed():
+	print("_signal_game_ready_delayed called...")
+	# Try to find the player with a small delay, and retry if not found
+	_try_enable_player(0)
+
+func _try_enable_player(attempts: int):
+	var max_attempts = 10
+	if attempts >= max_attempts:
+		print("Failed to find player after ", max_attempts, " attempts")
+		return
+	
+	# Look in all scenes and nodes
+	var character_controller = _find_character_controller()
+	
+	if character_controller:
+		print("Found character controller on attempt ", attempts + 1, ": ", character_controller.name)
+		
+		if character_controller.has_method("enable_game_ready"):
+			# Set spawn position
+			var spawn_pos = Vector3(0, 64, 0)
+			if character_controller.has_method("set_spawn_position"):
+				character_controller.call("set_spawn_position", spawn_pos)
+			
+			# Enable physics and movement
+			character_controller.call("enable_game_ready")
+			print("SUCCESS: Game ready - enabled character controller at spawn position: ", spawn_pos)
+		else:
+			print("Character controller missing enable_game_ready method")
+	else:
+		print("Player not found on attempt ", attempts + 1, ", retrying...")
+		# Try again in the next frame
+		call_deferred("_try_enable_player", attempts + 1)
+
+func _find_character_controller():
+	# Search through all scenes in the tree
+	var root = get_tree().root
+	return _search_node_recursive(root, "character_controller.gd")
+
+func _search_node_recursive(node: Node, script_name: String):
+	# Check if this node has the script we're looking for
+	if node.get_script() and node.get_script().resource_path.ends_with(script_name):
+		return node
+	
+	# Check if this node has the methods we need
+	if node.has_method("enable_game_ready") and node.has_method("set_spawn_position"):
+		return node
+	
+	# Search children recursively
+	for child in node.get_children():
+		var result = _search_node_recursive(child, script_name)
+		if result:
+			return result
+	
+	return null

@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/C:\\Users\\Ashto\\Documents\\voxeltools_spellbox\\Scripts\\WorldGeneration/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
