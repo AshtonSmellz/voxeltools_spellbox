@@ -331,8 +331,25 @@ func _update_temperature_propagation(delta: float):
 			var neighbor = get_voxel_at_pos(neighbor_pos)
 			
 			if neighbor.id > 0:
+				var neighbor_material = material_database.get_material(neighbor.id)
+				if not neighbor_material:
+					continue
+				
+				# Calculate temperature difference
 				var temp_diff = neighbor.properties.get_temperature_kelvin() - voxel.properties.get_temperature_kelvin()
-				total_heat_transfer += temp_diff * material.thermal_conductivity * delta
+				
+				# Use average thermal conductivity between materials
+				var avg_conductivity = (material.thermal_conductivity + neighbor_material.thermal_conductivity) / 2.0
+				
+				# Account for heat capacity - higher heat capacity means slower temperature change
+				var heat_capacity_mult = voxel.properties.get_heat_capacity_multiplier()
+				var base_heat_capacity = material.base_heat_capacity
+				var effective_heat_capacity = base_heat_capacity * heat_capacity_mult
+				
+				# Heat transfer formula: Q = k * A * ΔT / (C * m) where C is heat capacity
+				# Simplified: ΔT = (k * ΔT * dt) / C
+				var heat_transfer = temp_diff * avg_conductivity * delta / max(effective_heat_capacity, 0.1)
+				total_heat_transfer += heat_transfer
 				neighbor_count += 1
 		
 		if neighbor_count > 0:

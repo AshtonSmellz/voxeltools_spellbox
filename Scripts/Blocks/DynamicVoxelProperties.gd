@@ -41,6 +41,12 @@ const HEAT_CAPACITY_MASK = 0xF  # 4 bits
 const CHARGE_SHIFT = 20
 const CHARGE_MASK = 0x7  # 3 bits
 
+const FRICTION_SHIFT = 23
+const FRICTION_MASK = 0x7  # 3 bits
+
+const GRAVITY_SHIFT = 26
+const GRAVITY_MASK = 0x7  # 3 bits
+
 # Enums for property values
 enum Toughness {
 	FRAGILE = 0,
@@ -85,6 +91,28 @@ enum ChargeLevel {
 	MAX_POSITIVE = 7   # 4
 }
 
+enum FrictionLevel {
+	FRICTIONLESS = 0,  # 0.0
+	VERY_LOW = 1,      # 0.1
+	LOW = 2,           # 0.3
+	NORMAL = 3,        # 0.5
+	MODERATE = 4,      # 0.7
+	HIGH = 5,          # 0.9
+	VERY_HIGH = 6,     # 1.0
+	MAXIMUM = 7        # 1.2
+}
+
+enum GravityLevel {
+	ZERO = 0,          # 0.0 (no gravity)
+	VERY_WEAK = 1,     # 0.25x normal
+	WEAK = 2,         # 0.5x normal
+	NORMAL = 3,       # 1.0x normal (9.8 m/s²)
+	STRONG = 4,       # 1.5x normal
+	VERY_STRONG = 5,  # 2.0x normal
+	EXTREME = 6,      # 3.0x normal
+	MAXIMUM = 7       # 5.0x normal
+}
+
 func _init(data: int = 0):
 	packed_data = data
 	if packed_data == 0:
@@ -98,6 +126,8 @@ func set_defaults():
 	set_loudness(Loudness.NORMAL)
 	set_heat_capacity_index(7)  # Middle value
 	set_charge_level(ChargeLevel.NEUTRAL)
+	set_friction_level(FrictionLevel.NORMAL)
+	set_gravity_level(GravityLevel.NORMAL)
 
 # Static helper to create from voxel metadata
 static func from_metadata(metadata: Variant) -> DynamicVoxelProperties:
@@ -192,6 +222,68 @@ func set_charge_level(value: ChargeLevel):
 
 func get_charge_value() -> int:
 	return get_charge_level() - 3  # Convert to -3 to 4 range
+
+# Heat Capacity value getter (converts index to multiplier)
+# Index 0 = 0.1x, Index 15 = 2.0x (linear scale)
+func get_heat_capacity_multiplier() -> float:
+	var index = get_heat_capacity_index()
+	return 0.1 + (index / 15.0) * 1.9  # Range: 0.1 to 2.0
+
+# Friction property
+func get_friction_level() -> FrictionLevel:
+	return (packed_data >> FRICTION_SHIFT) & FRICTION_MASK
+
+func set_friction_level(value: FrictionLevel):
+	packed_data = (packed_data & ~(FRICTION_MASK << FRICTION_SHIFT)) | (value << FRICTION_SHIFT)
+
+func get_friction_value() -> float:
+	match get_friction_level():
+		FrictionLevel.FRICTIONLESS:
+			return 0.0
+		FrictionLevel.VERY_LOW:
+			return 0.1
+		FrictionLevel.LOW:
+			return 0.3
+		FrictionLevel.NORMAL:
+			return 0.5
+		FrictionLevel.MODERATE:
+			return 0.7
+		FrictionLevel.HIGH:
+			return 0.9
+		FrictionLevel.VERY_HIGH:
+			return 1.0
+		FrictionLevel.MAXIMUM:
+			return 1.2
+		_:
+			return 0.5
+
+# Gravity property
+func get_gravity_level() -> GravityLevel:
+	return (packed_data >> GRAVITY_SHIFT) & GRAVITY_MASK
+
+func set_gravity_level(value: GravityLevel):
+	packed_data = (packed_data & ~(GRAVITY_MASK << GRAVITY_SHIFT)) | (value << GRAVITY_SHIFT)
+
+func get_gravity_multiplier() -> float:
+	match get_gravity_level():
+		GravityLevel.ZERO:
+			return 0.0
+		GravityLevel.VERY_WEAK:
+			return 0.25
+		GravityLevel.WEAK:
+			return 0.5
+		GravityLevel.NORMAL:
+			return 1.0
+		GravityLevel.STRONG:
+			return 1.5
+		GravityLevel.VERY_STRONG:
+			return 2.0
+		GravityLevel.EXTREME:
+			return 3.0
+		GravityLevel.MAXIMUM:
+			return 5.0
+		_:
+			return 1.0
 
 # Create a copy with modifications
 func duplicate_and_modify() -> DynamicVoxelProperties:

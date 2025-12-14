@@ -115,9 +115,10 @@ const MAX_HISTORY = 50
 
 # Predefined spell modifiers
 static func modifier_reduce_friction(props: DynamicVoxelProperties, intensity: float):
-	props.set_elasticity(DynamicVoxelProperties.Elasticity.BOUNCY)
-	props.set_moisture(min(DynamicVoxelProperties.Moisture.SOAKED, 
-		props.get_moisture() + int(intensity * 2)))
+	var current = props.get_friction_level()
+	var reduction = int(intensity * 2)
+	props.set_friction_level(max(DynamicVoxelProperties.FrictionLevel.FRICTIONLESS, 
+		current - reduction))
 
 static func modifier_increase_temperature(props: DynamicVoxelProperties, intensity: float):
 	var current = props.get_temperature_index()
@@ -149,6 +150,24 @@ static func modifier_make_bouncy(props: DynamicVoxelProperties, intensity: float
 	props.set_elasticity(DynamicVoxelProperties.Elasticity.BOUNCY)
 	props.set_toughness(max(DynamicVoxelProperties.Toughness.WEAK,
 		props.get_toughness() - 1))
+
+static func modifier_increase_friction(props: DynamicVoxelProperties, intensity: float):
+	var current = props.get_friction_level()
+	var increase = int(intensity * 2)
+	props.set_friction_level(min(DynamicVoxelProperties.FrictionLevel.MAXIMUM, 
+		current + increase))
+
+static func modifier_reduce_gravity(props: DynamicVoxelProperties, intensity: float):
+	var current = props.get_gravity_level()
+	var reduction = int(intensity * 2)
+	props.set_gravity_level(max(DynamicVoxelProperties.GravityLevel.ZERO, 
+		current - reduction))
+
+static func modifier_increase_gravity(props: DynamicVoxelProperties, intensity: float):
+	var current = props.get_gravity_level()
+	var increase = int(intensity * 2)
+	props.set_gravity_level(min(DynamicVoxelProperties.GravityLevel.MAXIMUM, 
+		current + increase))
 
 # Create predefined spells
 func create_fire_spell(radius: float = 5.0, duration: float = 30.0) -> SpellEffect:
@@ -334,7 +353,7 @@ func create_combined_spell(modifiers: Array, shape: SpellEffect.EmitterShape = S
 
 # Special spell combinations
 func create_steam_spell(radius: float = 8.0, duration: float = 15.0) -> SpellEffect:
-	# Combines heat and moisture
+	# Combines heat and reduced friction (steam makes surfaces slippery)
 	return create_combined_spell(
 		[modifier_increase_temperature, modifier_reduce_friction],
 		SpellEffect.EmitterShape.SPHERE,

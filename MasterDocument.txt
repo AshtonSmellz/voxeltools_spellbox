@@ -1,0 +1,9 @@
+AI Prompt:
+I want to make a game functionally similar to minecraft, but I want the main progression of the game to rely on crafting and combining 
+new magical ingredients that can have different influences on physical properties within the world. For example, a player could craft a 
+spell with a spherical emitter that decreases the friction of all blocks found within the target emitter. As a result, I need to store 
+additional physical properties in every block such as friction, temperature, gravity strength, etc. Some of these properties dont 
+need to be stored on a per block basis, and can instead be affiliated with an ID, like the specific heat of a block, or its conductivity. 
+I need you to look over the existing project, and create a thorough, but brief document detailing the function of every script that
+is already in the project. This is needed so that we can reference that document later and not accidentally overwrite, or break
+prexisting work.
