@@ -7,55 +7,66 @@ func _init():
 	_initialize_default_materials()
 
 func _initialize_default_materials():
+	# IMPORTANT: These IDs must match BlockIDs enum
 	# Air (ID: 0)
-	var air = StaticMaterialProperties.new(0, "Air")
+	var air = StaticMaterialProperties.new(BlockIDs.BlockID.AIR, "Air")
 	air.configure_as_air()
 	register_material(air)
 	
-	# Dirt (ID: 1) - matches SimpleWorldGenerator
-	var dirt = StaticMaterialProperties.new(1, "Dirt")
+	# Dirt (ID: 1)
+	var dirt = StaticMaterialProperties.new(BlockIDs.BlockID.DIRT, "Dirt")
 	dirt.configure_as_dirt()
 	register_material(dirt)
 	
-	# Grass (ID: 2) - matches SimpleWorldGenerator  
-	var grass = StaticMaterialProperties.new(2, "Grass")
+	# Grass (ID: 2)
+	var grass = StaticMaterialProperties.new(BlockIDs.BlockID.GRASS, "Grass")
 	grass.configure_as_grass()
 	register_material(grass)
 	
-	# Sand (ID: 3) - matches SimpleWorldGenerator
-	var sand = StaticMaterialProperties.new(3, "Sand")
+	# Sand (ID: 3)
+	var sand = StaticMaterialProperties.new(BlockIDs.BlockID.SAND, "Sand")
 	sand.configure_as_sand()
 	register_material(sand)
 	
-	# Stone (ID: 4) 
-	var stone = StaticMaterialProperties.new(4, "Stone")
+	# Stone (ID: 4)
+	var stone = StaticMaterialProperties.new(BlockIDs.BlockID.STONE, "Stone")
 	stone.configure_as_stone()
 	register_material(stone)
 	
 	# Wood (ID: 5)
-	var wood = StaticMaterialProperties.new(5, "Wood")
+	var wood = StaticMaterialProperties.new(BlockIDs.BlockID.WOOD, "Wood")
 	wood.configure_as_wood()
 	register_material(wood)
 	
 	# Iron (ID: 6)
-	var iron = StaticMaterialProperties.new(6, "Iron")
+	var iron = StaticMaterialProperties.new(BlockIDs.BlockID.IRON, "Iron")
 	iron.configure_as_iron()
 	register_material(iron)
 	
 	# Glass (ID: 7)
-	var glass = StaticMaterialProperties.new(7, "Glass")
+	var glass = StaticMaterialProperties.new(BlockIDs.BlockID.GLASS, "Glass")
 	glass.configure_as_glass()
 	register_material(glass)
 	
 	# Water (ID: 8)
-	var water = StaticMaterialProperties.new(8, "Water")
+	var water = StaticMaterialProperties.new(BlockIDs.BlockID.WATER, "Water")
 	water.configure_as_water()
 	register_material(water)
 	
 	# Lava (ID: 9)
-	var lava = StaticMaterialProperties.new(9, "Lava")
+	var lava = StaticMaterialProperties.new(BlockIDs.BlockID.LAVA, "Lava")
 	lava.configure_as_lava()
 	register_material(lava)
+	
+	# Log (ID: 10)
+	var log = StaticMaterialProperties.new(BlockIDs.BlockID.LOG, "Log")
+	log.configure_as_log()
+	register_material(log)
+	
+	# Leaves (ID: 11)
+	var leaves = StaticMaterialProperties.new(BlockIDs.BlockID.LEAVES, "Leaves")
+	leaves.configure_as_leaves()
+	register_material(leaves)
 
 func register_material(material: StaticMaterialProperties):
 	materials[material.material_id] = material

@@ -1,4 +1,4 @@
-[gd_resource type="VoxelBlockyLibrary" load_steps=6 format=3 uid="uid://n28k61esrty4"]
+[gd_resource type="VoxelBlockyLibrary" load_steps=9 format=3 uid="uid://n28k61esrty4"]
 
 [ext_resource type="Material" uid="uid://cae2ptfgpiw7d" path="res://materials/voxel_atlas_material.tres" id="1_l34x6"]
 
@@ -33,5 +33,35 @@ tile_top = Vector2i(3, 0)
 tile_back = Vector2i(3, 0)
 tile_front = Vector2i(3, 0)
 
+[sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_md8ut"]
+material_override_0 = ExtResource("1_l34x6")
+atlas_size_in_tiles = Vector2i(10, 10)
+tile_left = Vector2i(4, 0)
+tile_right = Vector2i(4, 0)
+tile_bottom = Vector2i(4, 0)
+tile_top = Vector2i(4, 0)
+tile_back = Vector2i(4, 0)
+tile_front = Vector2i(4, 0)
+
+[sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_m6c05"]
+material_override_0 = ExtResource("1_l34x6")
+atlas_size_in_tiles = Vector2i(10, 10)
+tile_left = Vector2i(6, 0)
+tile_right = Vector2i(6, 0)
+tile_bottom = Vector2i(5, 0)
+tile_top = Vector2i(5, 0)
+tile_back = Vector2i(6, 0)
+tile_front = Vector2i(6, 0)
+
+[sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_rbjqk"]
+material_override_0 = ExtResource("1_l34x6")
+atlas_size_in_tiles = Vector2i(10, 10)
+tile_left = Vector2i(7, 0)
+tile_right = Vector2i(7, 0)
+tile_bottom = Vector2i(7, 0)
+tile_top = Vector2i(7, 0)
+tile_back = Vector2i(7, 0)
+tile_front = Vector2i(7, 0)
+
 [resource]
-models = Array[VoxelBlockyModel]([SubResource("VoxelBlockyModelEmpty_58o20"), SubResource("VoxelBlockyModelCube_l34x6"), SubResource("VoxelBlockyModelCube_sh2fm"), SubResource("VoxelBlockyModelCube_3q0dx")])
+models = Array[VoxelBlockyModel]([SubResource("VoxelBlockyModelEmpty_58o20"), SubResource("VoxelBlockyModelCube_l34x6"), SubResource("VoxelBlockyModelCube_sh2fm"), SubResource("VoxelBlockyModelCube_3q0dx"), SubResource("VoxelBlockyModelCube_md8ut"), SubResource("VoxelBlockyModelCube_m6c05"), SubResource("VoxelBlockyModelCube_rbjqk")])

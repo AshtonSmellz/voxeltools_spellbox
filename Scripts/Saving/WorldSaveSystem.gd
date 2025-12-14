@@ -66,6 +66,7 @@ func create_world(world_name: String, world_type: String = "default", seed: int 
 		voxel_world_manager.set_world_seed(world_data.seed)
 		
 		print("Configured VoxelStream SQLite at: ", stream.database_path)
+		print("NOTE: New world created - will generate fresh terrain with grass, dirt, and sand")
 	
 	# Save initial world data
 	var save_path = world_path + "world.tres"
@@ -80,33 +81,49 @@ func create_world(world_name: String, world_type: String = "default", seed: int 
 	
 	print("Created world: ", world_name, " at ", world_path)
 	
-	# Signal game ready for new world too with delay
-	call_deferred("_signal_game_ready_delayed")
+	# DO NOT enable player movement here - wait until world is actually loaded
+	# The player will be enabled when the world is selected and loaded via load_world()
 	
 	return world_data
 
 func load_world(world_id: String) -> bool:
+	print("=== WorldSaveSystem.load_world(", world_id, ") ===")
+	
 	var world_path = WORLDS_DIR + world_id + "/"
 	var world_file = world_path + "world.tres"
 	
+	print("Looking for world file: ", world_file)
 	if not ResourceLoader.exists(world_file):
-		print("World file not found: ", world_file)
+		print("ERROR: World file not found: ", world_file)
 		return false
 	
 	var world_data = ResourceLoader.load(world_file) as WorldData
 	if world_data == null:
-		print("Failed to load world data from: ", world_file)
+		print("ERROR: Failed to load world data from: ", world_file)
 		return false
 	
+	print("Loaded world data: ", world_data.world_name)
 	current_world_data = world_data
 	current_world_path = world_path
 	current_world_data.update_last_played()
 	save_timer = 0.0
 	
 	# Configure VoxelStream to load from this world
+	print("voxel_world_manager: ", voxel_world_manager)
+	print("voxel_world_manager.voxel_terrain: ", voxel_world_manager.voxel_terrain if voxel_world_manager else "null")
 	if voxel_world_manager and voxel_world_manager.voxel_terrain:
 		var stream = VoxelStreamSQLite.new()
 		stream.database_path = world_path + "voxels.sqlite"
+		
+		# Check if database exists - if it does, warn user they're loading old terrain
+		var db_exists = FileAccess.file_exists(stream.database_path)
+		if db_exists:
+			print("WARNING: Loading existing world database. Terrain will be from old generation.")
+			print("To see new grass/dirt/sand generation, delete the database file or create a new world.")
+			print("Database path: ", stream.database_path)
+		else:
+			print("No existing database found - will generate fresh terrain with new generator")
+		
 		voxel_world_manager.voxel_terrain.stream = stream
 		
 		# Setup comprehensive generation and set seed
@@ -120,6 +137,12 @@ func load_world(world_id: String) -> bool:
 		elif voxel_world_manager.voxel_terrain.has_method("reload_stream"):
 			voxel_world_manager.voxel_terrain.reload_stream()
 		print("Loaded voxel database from: ", stream.database_path)
+		print("Loaded world: ", world_data.world_name)
+	else:
+		print("WARNING: voxel_world_manager or voxel_terrain is null! World generation may not work.")
+		print("  voxel_world_manager: ", voxel_world_manager)
+		if voxel_world_manager:
+			print("  voxel_terrain: ", voxel_world_manager.voxel_terrain)
 	
 	# Load global data (active spells, etc.)
 	_load_global_data()
@@ -127,12 +150,12 @@ func load_world(world_id: String) -> bool:
 	# Load all saved dynamic properties
 	_load_all_properties()
 	
-	print("Loaded world: ", world_data.world_name)
-	
 	# Signal game ready and set player spawn with delay
+	print("Calling _signal_game_ready_delayed...")
 	call_deferred("_signal_game_ready_delayed")
 	
 	world_loaded.emit(true)
+	print("World loaded successfully, returning true")
 	return true
 
 func save_world() -> bool:
@@ -516,7 +539,7 @@ func _signal_game_ready_delayed():
 func _try_enable_player(attempts: int):
 	var max_attempts = 10
 	if attempts >= max_attempts:
-		print("Failed to find player after ", max_attempts, " attempts")
+		print("WARNING: Could not find player after ", max_attempts, " attempts")
 		return
 	
 	# Look in all scenes and nodes

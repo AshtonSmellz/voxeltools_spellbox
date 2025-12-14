@@ -169,6 +169,35 @@ func configure_as_lava():
 	default_dynamic_properties.set_friction_level(DynamicVoxelProperties.FrictionLevel.VERY_LOW)
 	base_color = Color(1.0, 0.3, 0.0)
 
+func configure_as_log():
+	material_name = "Log"
+	density = 0.7  # Slightly denser than wood (tree trunk)
+	melting_temp = 573.0  # Burns like wood
+	freezing_temp = 0.0
+	conductivity_breakdown_temperature = 573.0
+	transmutation_value = 2.0
+	base_heat_capacity = 1.8  # Higher heat capacity (organic matter)
+	thermal_conductivity = 0.15  # Very low thermal conductivity
+	default_dynamic_properties.set_toughness(DynamicVoxelProperties.Toughness.WOOD)
+	default_dynamic_properties.set_elasticity(DynamicVoxelProperties.Elasticity.PLIANT)
+	default_dynamic_properties.set_friction_level(DynamicVoxelProperties.FrictionLevel.MODERATE)
+	base_color = Color(0.4, 0.2, 0.1)  # Darker brown for logs
+
+func configure_as_leaves():
+	material_name = "Leaves"
+	density = 0.3  # Very light
+	melting_temp = 400.0  # Burns very easily
+	freezing_temp = 273.0
+	conductivity_breakdown_temperature = 400.0
+	transmutation_value = 0.5
+	base_heat_capacity = 1.2  # Moderate heat capacity
+	thermal_conductivity = 0.1  # Very low thermal conductivity
+	default_dynamic_properties.set_toughness(DynamicVoxelProperties.Toughness.VERY_WEAK)
+	default_dynamic_properties.set_elasticity(DynamicVoxelProperties.Elasticity.BOUNCY)
+	default_dynamic_properties.set_friction_level(DynamicVoxelProperties.FrictionLevel.NORMAL)
+	default_dynamic_properties.set_moisture(DynamicVoxelProperties.Moisture.WET)
+	base_color = Color(0.1, 0.6, 0.1)  # Green for leaves
+
 # Helper function to create a copy with same properties
 func duplicate_properties() -> StaticMaterialProperties:
 	var copy = StaticMaterialProperties.new(material_id, material_name)

@@ -15,7 +15,8 @@ func _run():
 		print("Could not load voxel library at: ", library_path)
 		return
 	
-	print("Loaded library with ", library.get_model_count(), " models")
+	var model_count = library.models.size() if library.models else 0
+	print("Loaded library with ", model_count, " models")
 	
 	# Atlas size (assuming 16x16 atlas)
 	var atlas_size = Vector2(16, 16)
@@ -27,8 +28,9 @@ func _run():
 	print("Tile size: ", tile_size, " Margin: ", margin)
 	
 	# Process each model in the library
-	for i in range(library.get_model_count()):
-		var model = library.get_model(i)
+	if library.models:
+		for i in range(library.models.size()):
+			var model = library.models[i]
 		if model is VoxelBlockyModelCube:
 			print("Processing cube model ", i, ": ", model.resource_name)
 			_fix_cube_model_uvs(model as VoxelBlockyModelCube, tile_size, margin)

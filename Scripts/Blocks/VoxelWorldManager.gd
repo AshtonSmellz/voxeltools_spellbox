@@ -83,20 +83,51 @@ func _setup_voxel_library():
 		push_warning("VoxelWorldManager: Mesher is not VoxelMesherBlocky. Some features may not work correctly.")
 
 func _setup_voxel_types():
-	# Try to load existing library first
+	# Helper function to get model count from library
+	var get_library_model_count = func(lib: VoxelBlockyLibrary) -> int:
+		if not lib:
+			return 0
+		# VoxelBlockyLibrary has a 'models' property that's an Array
+		# Access it directly - it should always exist
+		return lib.models.size() if lib.models else 0
+	
+	# Check if library from mesher is valid
+	var mesher = voxel_terrain.mesher as VoxelMesherBlocky
+	if mesher and mesher.library:
+		var existing_lib = mesher.library as VoxelBlockyLibrary
+		var model_count = get_library_model_count.call(existing_lib)
+		if model_count >= 4:
+			# Use existing library from mesher
+			voxel_library = existing_lib
+			print("Using existing voxel library from mesher with ", model_count, " models")
+			return
+	
+	# Try to load existing library from file
 	var library_path = "res://materials/voxel_library.tres"
 	if ResourceLoader.exists(library_path):
-		voxel_library = load(library_path)
-		var mesher = voxel_terrain.mesher as VoxelMesherBlocky
+		var loaded_library = load(library_path) as VoxelBlockyLibrary
+		var model_count = get_library_model_count.call(loaded_library)
+		if model_count >= 4:
+			# Library exists and has enough models - use it
+			voxel_library = loaded_library
+			if mesher:
+				mesher.library = voxel_library
+			print("Loaded existing voxel library with ", model_count, " models")
+			return
+		else:
+			# Library exists but doesn't have enough models - recreate it
+			print("Existing library has only ", model_count, " models, creating new one")
+	
+	# Create a basic library if none exists or existing one is insufficient
+	_create_basic_voxel_library()
+	if mesher:
 		mesher.library = voxel_library
-		print("Loaded existing voxel library with ", voxel_library.get_model_count(), " models")
-	else:
-		# Create a basic library if none exists
-		_create_basic_voxel_library()
-		print("Created basic voxel library - run VoxelAtlasSetup.gd for texture atlas support")
+	var final_count = get_library_model_count.call(voxel_library)
+	print("Created basic voxel library with ", final_count, " models in BlockIDs order")
 
 func _create_basic_voxel_library():
 	# This creates a simple colored voxel library without textures
+	# IMPORTANT: Models must be added in BlockIDs order!
 	# For proper textured voxels, use VoxelAtlasSetup.gd
 	
 	voxel_library.atlas_size = Vector2i(16, 16)
@@ -106,39 +137,105 @@ func _create_basic_voxel_library():
 	basic_material.vertex_color_use_as_albedo = true
 	basic_material.roughness = 0.8
 	
-	# Air (ID 0) - empty
+	# IMPORTANT: Add models in BlockIDs order
+	# ID 0: Air (empty)
 	var air_voxel = VoxelBlockyModelEmpty.new()
-	voxel_library.add_model(air_voxel)
+	voxel_library.add_model(air_voxel)  # BlockIDs.BlockID.AIR
 	
-	# Create basic colored voxels for each material
-	var materials_data = [
-		{"name": "Stone", "color": Color(0.5, 0.5, 0.5)},
-		{"name": "Wood", "color": Color(0.55, 0.27, 0.07)},
-		{"name": "Iron", "color": Color(0.7, 0.7, 0.7)},
-		{"name": "Glass", "color": Color(0.8, 0.9, 1.0, 0.3), "transparent": true},
-		{"name": "Water", "color": Color(0.2, 0.4, 0.8, 0.7), "transparent": true},
-		{"name": "Lava", "color": Color(1.0, 0.3, 0.0)},
-		{"name": "Grass", "color": Color(0.2, 0.7, 0.2)},
-	]
+	# ID 1: Dirt
+	var dirt_model = VoxelBlockyModelCube.new()
+	dirt_model.resource_name = "Dirt"
+	var dirt_mat = StandardMaterial3D.new()
+	dirt_mat.albedo_color = Color(0.4, 0.3, 0.2)  # Brown dirt color
+	dirt_mat.roughness = 0.8
+	dirt_model.set_material_override(0, dirt_mat)
+	voxel_library.add_model(dirt_model)  # BlockIDs.BlockID.DIRT
 	
-	for i in range(materials_data.size()):
-		var data = materials_data[i]
-		var model = VoxelBlockyModelCube.new()
-		model.resource_name = data.name
-		
-		# Create colored material for this voxel type
-		var mat = StandardMaterial3D.new()
-		mat.albedo_color = data.color
-		if data.has("transparent") and data.transparent:
-			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			# Note: VoxelBlockyModelCube doesn't have 'transparent' property
-			# Transparency is handled through the material settings
-		
-		model.set_material_override(0, mat)
-		voxel_library.add_model(model)
+	# ID 2: Grass
+	var grass_model = VoxelBlockyModelCube.new()
+	grass_model.resource_name = "Grass"
+	var grass_mat = StandardMaterial3D.new()
+	grass_mat.albedo_color = Color(0.2, 0.7, 0.2)  # Green grass color
+	grass_mat.roughness = 0.8
+	grass_model.set_material_override(0, grass_mat)
+	voxel_library.add_model(grass_model)  # BlockIDs.BlockID.GRASS
+	
+	# ID 3: Sand
+	var sand_model = VoxelBlockyModelCube.new()
+	sand_model.resource_name = "Sand"
+	var sand_mat = StandardMaterial3D.new()
+	sand_mat.albedo_color = Color(0.9, 0.8, 0.6)  # Beige sand color
+	sand_mat.roughness = 0.8
+	sand_model.set_material_override(0, sand_mat)
+	voxel_library.add_model(sand_model)  # BlockIDs.BlockID.SAND
+	
+	# ID 4: Stone
+	var stone_model = VoxelBlockyModelCube.new()
+	stone_model.resource_name = "Stone"
+	var stone_mat = StandardMaterial3D.new()
+	stone_mat.albedo_color = Color(0.5, 0.5, 0.5)  # Gray stone color
+	stone_mat.roughness = 0.8
+	stone_model.set_material_override(0, stone_mat)
+	voxel_library.add_model(stone_model)  # BlockIDs.BlockID.STONE
+	
+	# ID 5: Wood
+	var wood_model = VoxelBlockyModelCube.new()
+	wood_model.resource_name = "Wood"
+	var wood_mat = StandardMaterial3D.new()
+	wood_mat.albedo_color = Color(0.55, 0.27, 0.07)  # Brown wood color
+	wood_mat.roughness = 0.8
+	wood_model.set_material_override(0, wood_mat)
+	voxel_library.add_model(wood_model)  # BlockIDs.BlockID.WOOD
+	
+	# ID 6: Iron
+	var iron_model = VoxelBlockyModelCube.new()
+	iron_model.resource_name = "Iron"
+	var iron_mat = StandardMaterial3D.new()
+	iron_mat.albedo_color = Color(0.7, 0.7, 0.7)  # Silver iron color
+	iron_mat.roughness = 0.3
+	iron_mat.metallic = 0.8
+	iron_model.set_material_override(0, iron_mat)
+	voxel_library.add_model(iron_model)  # BlockIDs.BlockID.IRON
+	
+	# ID 7: Glass
+	var glass_model = VoxelBlockyModelCube.new()
+	glass_model.resource_name = "Glass"
+	glass_model.transparent = true
+	glass_model.transparency_index = 1
+	var glass_mat = StandardMaterial3D.new()
+	glass_mat.albedo_color = Color(0.8, 0.9, 1.0, 0.3)  # Light blue transparent
+	glass_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass_mat.roughness = 0.1
+	glass_model.set_material_override(0, glass_mat)
+	voxel_library.add_model(glass_model)  # BlockIDs.BlockID.GLASS
+	
+	# ID 8: Water
+	var water_model = VoxelBlockyModelCube.new()
+	water_model.resource_name = "Water"
+	water_model.transparent = true
+	water_model.transparency_index = 2
+	var water_mat = StandardMaterial3D.new()
+	water_mat.albedo_color = Color(0.2, 0.4, 0.8, 0.7)  # Blue transparent
+	water_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	water_mat.roughness = 0.1
+	water_model.set_material_override(0, water_mat)
+	voxel_library.add_model(water_model)  # BlockIDs.BlockID.WATER
+	
+	# ID 9: Lava
+	var lava_model = VoxelBlockyModelCube.new()
+	lava_model.resource_name = "Lava"
+	var lava_mat = StandardMaterial3D.new()
+	lava_mat.albedo_color = Color(1.0, 0.3, 0.0)  # Orange-red lava color
+	lava_mat.roughness = 0.8
+	lava_mat.emission_enabled = true
+	lava_mat.emission = Color(1.0, 0.3, 0.0) * 0.5  # Glowing effect
+	lava_model.set_material_override(0, lava_mat)
+	voxel_library.add_model(lava_model)  # BlockIDs.BlockID.LAVA
 	
 	# Bake the library for optimization
 	voxel_library.bake()
+	var model_count = voxel_library.models.size() if voxel_library.models else 0
+	print("Created basic voxel library with ", model_count, " models in BlockIDs order")
 
 func _process(delta):
 	# Update active spells
@@ -268,35 +365,35 @@ func _update_physics_simulation(delta: float):
 func _handle_melting(world_pos: Vector3i, voxel: Dictionary, material: StaticMaterialProperties):
 	# Convert to liquid variant
 	match voxel.id:
-		1:  # Dirt -> Destroy (organic matter burns)
-			set_voxel_at_pos(world_pos, 0)
+		BlockIDs.BlockID.DIRT:  # Dirt -> Destroy (organic matter burns)
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.AIR)
 			voxel_destroyed.emit(world_pos, voxel.id)
-		2:  # Grass -> Destroy (burns)
-			set_voxel_at_pos(world_pos, 0)
+		BlockIDs.BlockID.GRASS:  # Grass -> Destroy (burns)
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.AIR)
 			voxel_destroyed.emit(world_pos, voxel.id)
-		3:  # Sand -> Glass (melted sand becomes glass)
-			set_voxel_at_pos(world_pos, 7, voxel.properties)
-		4:  # Stone -> Lava
-			set_voxel_at_pos(world_pos, 9, voxel.properties)
-		5:  # Wood -> Destroy (burns)
-			set_voxel_at_pos(world_pos, 0)
+		BlockIDs.BlockID.SAND:  # Sand -> Glass (melted sand becomes glass)
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.GLASS, voxel.properties)
+		BlockIDs.BlockID.STONE:  # Stone -> Lava
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.LAVA, voxel.properties)
+		BlockIDs.BlockID.WOOD:  # Wood -> Destroy (burns)
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.AIR)
 			voxel_destroyed.emit(world_pos, voxel.id)
-		6:  # Iron -> Lava
-			set_voxel_at_pos(world_pos, 9, voxel.properties)
-		7:  # Glass -> Lava
-			set_voxel_at_pos(world_pos, 9, voxel.properties)
+		BlockIDs.BlockID.IRON:  # Iron -> Lava
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.LAVA, voxel.properties)
+		BlockIDs.BlockID.GLASS:  # Glass -> Lava
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.LAVA, voxel.properties)
 		_:
 			# Default: destroy
-			set_voxel_at_pos(world_pos, 0)
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.AIR)
 
 # Handle freezing
 func _handle_freezing(world_pos: Vector3i, voxel: Dictionary, material: StaticMaterialProperties):
 	# Convert to solid variant
 	match voxel.id:
-		8:  # Water -> Ice (we'll make it stone for now)
-			set_voxel_at_pos(world_pos, 4, voxel.properties)
-		9:  # Lava -> Stone
-			set_voxel_at_pos(world_pos, 4, voxel.properties)
+		BlockIDs.BlockID.WATER:  # Water -> Ice (we'll make it stone for now)
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.STONE, voxel.properties)
+		BlockIDs.BlockID.LAVA:  # Lava -> Stone
+			set_voxel_at_pos(world_pos, BlockIDs.BlockID.STONE, voxel.properties)
 
 # Update temperature propagation
 func _update_temperature_propagation(delta: float):
@@ -448,14 +545,61 @@ func set_world_seed(seed: int):
 
 func setup_comprehensive_generation():
 	if not voxel_terrain:
-		print("No voxel terrain to setup generation for")
+		print("ERROR: No voxel terrain to setup generation for")
 		return
 	
-	# Create simple 4-block generator
+	# Create simple world generator that uses grass, dirt, and sand
 	var simple_generator = SimpleWorldGenerator.new()
 	voxel_terrain.generator = simple_generator
 	
-	print("Set up simple 4-block world generation (air, dirt, grass, sand)")
+	print("=== Set up SimpleWorldGenerator ===")
+	print("Generator type: ", simple_generator.get_script().get_path())
+	print("Generator will create:")
+	print("  - Grass blocks on surface (non-desert biomes)")
+	print("  - Dirt blocks underground")
+	print("  - Sand blocks in desert biomes and ocean floors")
+	print("Current terrain generator: ", voxel_terrain.generator)
+	print("Generator class: ", voxel_terrain.generator.get_class() if voxel_terrain.generator else "null")
+	
+	# Verify the generator is actually set
+	if voxel_terrain.generator != simple_generator:
+		print("ERROR: Generator was not set correctly!")
+	else:
+		print("Generator successfully assigned to voxel_terrain")
+	
+	# Ensure library has the right blocks
+	var mesher = voxel_terrain.mesher as VoxelMesherBlocky
+	if mesher:
+		# Get library from mesher if we don't have one
+		if not voxel_library:
+			voxel_library = mesher.library
+		
+		# Ensure mesher has the library
+		if not mesher.library:
+			if not voxel_library:
+				_create_basic_voxel_library()
+			mesher.library = voxel_library
+			print("Assigned voxel library to mesher")
+	
+	if voxel_library:
+		var model_count = voxel_library.models.size() if voxel_library.models else 0
+		
+		if model_count < 4:
+			print("WARNING: Voxel library only has ", model_count, " models. Need at least 4 (Air, Dirt, Grass, Sand)")
+			print("Recreating library with correct BlockIDs order...")
+			_create_basic_voxel_library()
+			if mesher:
+				mesher.library = voxel_library
+			model_count = voxel_library.models.size() if voxel_library.models else 0
+			print("Recreated library with ", model_count, " models")
+		else:
+			print("Voxel library has ", model_count, " models - should be sufficient")
+			print("Library models should be in order: Air(0), Dirt(1), Grass(2), Sand(3), Stone(4), Wood(5), Iron(6), Glass(7), Water(8), Lava(9)")
+	else:
+		print("ERROR: No voxel library! Creating basic library...")
+		_create_basic_voxel_library()
+		if mesher:
+			mesher.library = voxel_library
 	
 	# Note: Removed structure generation for simplicity
 
@@ -589,28 +733,8 @@ func _create_item_drop_for_voxel(voxel_id: int, world_pos: Vector3i):
 	print("Created item drop: ", item_id, " at ", world_position)
 
 func _voxel_id_to_item_id(voxel_id: int) -> String:
-	# Mapping based on MaterialDatabase IDs
-	match voxel_id:
-		1:
-			return "dirt"
-		2:
-			return "grass"
-		3:
-			return "sand"
-		4:
-			return "stone"
-		5:
-			return "wood"
-		6:
-			return "iron"
-		7:
-			return "glass"
-		8:
-			return "water"
-		9:
-			return "lava"
-		_:
-			return ""  # Unknown material, don't drop anything
+	# Use unified BlockIDs system
+	return BlockIDs.block_id_to_item_id(voxel_id)
 
 func clear_world_and_regenerate():
 	"""Clear all voxel data and regenerate from scratch with current generator"""

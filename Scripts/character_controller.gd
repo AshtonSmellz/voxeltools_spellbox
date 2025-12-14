@@ -237,28 +237,8 @@ func _create_item_drop(voxel_id: int, world_position: Vector3):
 	item_drop.linear_velocity = random_velocity
 
 func _voxel_id_to_item_id(voxel_id: int) -> String:
-	# Mapping based on MaterialDatabase IDs
-	match voxel_id:
-		1:
-			return "dirt"
-		2:
-			return "grass"
-		3:
-			return "sand"
-		4:
-			return "stone"
-		5:
-			return "wood"
-		6:
-			return "iron"
-		7:
-			return "glass"
-		8:
-			return "water"
-		9:
-			return "lava"
-		_:
-			return ""  # Unknown material, don't drop anything
+	# Use unified BlockIDs system
+	return BlockIDs.block_id_to_item_id(voxel_id)
 
 func enable_game_ready():
 	_game_ready = true

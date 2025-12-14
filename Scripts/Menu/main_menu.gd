@@ -274,8 +274,9 @@ func _on_credits_pressed():
 	_hide_all_containers()
 	creditsContainer.visible = true
 
-# Game World Management
+	# Game World Management
 func _create_game_world_container():
+	print("=== Creating game world container ===")
 	# Create the game world container
 	gameWorldContainer = Control.new()
 	gameWorldContainer.name = "GameWorldContainer"
@@ -284,13 +285,19 @@ func _create_game_world_container():
 	
 	# Add it to the same parent as other containers
 	var parent = homescreenContainer.get_parent()
+	if not parent:
+		print("ERROR: Could not find parent for gameWorldContainer!")
+		return
 	parent.add_child(gameWorldContainer)
+	print("Added gameWorldContainer to parent: ", parent.name)
 	
 	# Load the game world scene
 	var game_world_scene = load("res://Scenes/game_world.tscn")
 	if game_world_scene:
+		print("Loaded game_world.tscn, instantiating...")
 		var game_world_instance = game_world_scene.instantiate()
 		gameWorldContainer.add_child(game_world_instance)
+		print("Added game world instance to container. Children: ", gameWorldContainer.get_children().map(func(n): return n.name))
 		
 		# Add inventory manager to game world
 		var inventory_manager = InventoryManager.new()
@@ -355,17 +362,45 @@ func _create_game_world_container():
 		print("WARNING: Could not load game_world.tscn")
 
 func _on_game_ready_to_start(character: CharacterData, world_id: String, world_data: WorldData, mode: String):
-	print("Transitioning to game world...")
+	print("=== _on_game_ready_to_start called ===")
+	print("Character: ", character.name if character else "null")
+	print("World ID: ", world_id)
+	print("World Name: ", world_data.world_name if world_data else "null")
+	print("Mode: ", mode)
+	
+	# Ensure game world container exists
+	if not gameWorldContainer:
+		print("ERROR: gameWorldContainer is null! Creating it now...")
+		_create_game_world_container()
+	
+	if not gameWorldContainer:
+		_show_error_dialog("Error", "Failed to create game world container")
+		return
+	
+	# Find and connect VoxelWorldManager to WorldSaveSystem
+	var game_world = gameWorldContainer.get_child(0) if gameWorldContainer.get_child_count() > 0 else null
+	if game_world:
+		var voxel_manager = game_world.find_child("VoxelWorldManager", true, false)
+		if voxel_manager:
+			print("Found VoxelWorldManager, connecting to WorldSaveSystem")
+			WorldSaveSystem.set_voxel_world_manager(voxel_manager)
+		else:
+			print("WARNING: Could not find VoxelWorldManager in game world")
 	
 	# Load the world data using WorldSaveSystem
+	print("Calling WorldSaveSystem.load_world(", world_id, ")...")
 	var success = WorldSaveSystem.load_world(world_id)
+	print("WorldSaveSystem.load_world returned: ", success)
+	
 	if not success:
 		_show_error_dialog("Load Error", "Failed to load world: " + world_data.world_name)
 		return
 	
 	# Hide all menu containers and show game world
+	print("Hiding menu containers and showing game world...")
 	_hide_all_containers()
 	gameWorldContainer.visible = true
+	print("gameWorldContainer.visible = ", gameWorldContainer.visible)
 	
 	# Show game UI when entering game
 	var hotbar = find_child("HotbarUI", false, false)

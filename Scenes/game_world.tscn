@@ -247,13 +247,16 @@ sky_material = SubResource("PhysicalSkyMaterial_ixhix")
 [sub_resource type="Environment" id="2"]
 background_mode = 2
 sky = SubResource("Sky_403h4")
-ambient_light_color = Color(0.054902, 0.054902, 0.054902, 1)
-ambient_light_sky_contribution = 0.7
+ambient_light_energy = 1.18
 sdfgi_enabled = true
 sdfgi_use_occlusion = true
 glow_hdr_threshold = 0.5
 fog_enabled = true
+fog_light_color = Color(0.441597, 0.854964, 0.948847, 1)
+fog_light_energy = 0.59
 fog_aerial_perspective = 1.0
+fog_sky_affect = 0.439
+fog_height_density = -16.0
 
 [node name="GameWorld" type="Node"]
 script = SubResource("GDScript_0nejw")

@@ -68,6 +68,16 @@ func _initialize_item_database():
 	lava.max_stack_size = 1
 	item_database["lava"] = lava
 	
+	var log = Item.new("log", "Log", "Tree trunk block")
+	log.item_type = Item.ItemType.BLOCK
+	log.max_stack_size = 64
+	item_database["log"] = log
+	
+	var leaves = Item.new("leaves", "Leaves", "Tree foliage block")
+	leaves.item_type = Item.ItemType.BLOCK
+	leaves.max_stack_size = 64
+	item_database["leaves"] = leaves
+	
 	# Tools
 	var pickaxe = Item.new("pickaxe", "Pickaxe", "Tool for mining blocks")
 	pickaxe.item_type = Item.ItemType.TOOL

@@ -32,17 +32,26 @@ func _run():
 func _create_atlas_material() -> StandardMaterial3D:
 	var mat = StandardMaterial3D.new()
 	
-	# Configure for voxel rendering
+	# Configure for voxel rendering to prevent texture bleeding
 	mat.vertex_color_use_as_albedo = false
-	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST  # Pixelated look
+	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST  # Pixelated look - CRITICAL for preventing bleeding
 	mat.roughness = 0.8
 	mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	
+	# Additional settings to prevent texture bleeding
+	# These help ensure crisp pixel boundaries
+	mat.disable_receive_shadows = false
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # Optional: for cleaner look
 	
 	# NOTE: You'll need to set the texture manually or uncomment this line with your atlas
 	# mat.albedo_texture = preload("res://textures/voxel_atlas.png")
 	
 	ResourceSaver.save(mat, "res://materials/voxel_atlas_material.tres")
-	print("Created atlas material (add your texture atlas to it!)")
+	print("Created atlas material with NEAREST filtering (prevents texture bleeding)")
+	print("IMPORTANT: Make sure your texture import settings have:")
+	print("  - Filter: OFF")
+	print("  - Mipmaps: OFF (or set to 'Disable')")
+	print("  - Fix Alpha Border: ON")
 	
 	return mat
 
@@ -55,65 +64,20 @@ func _create_voxel_library_with_atlas() -> VoxelBlockyLibrary:
 	# Load the atlas material
 	var atlas_material = load("res://materials/voxel_atlas_material.tres")
 	
+	# IMPORTANT: IDs must match BlockIDs enum order
 	# ID 0: Air (empty)
 	var air = VoxelBlockyModelEmpty.new()
-	library.add_model(air)  # ID 0
+	library.add_model(air)  # ID 0 = BlockIDs.BlockID.AIR
 	
-	# ID 1: Stone
-	var stone = _create_cube_model(
-		Vector2i(0, 0),  # Position in atlas (top-left)
+	# ID 1: Dirt
+	var dirt = _create_cube_model(
+		Vector2i(2, 1),  # Position in atlas (dirt texture)
 		atlas_material,
-		"Stone"
+		"Dirt"
 	)
-	library.add_model(stone)  # ID 1
+	library.add_model(dirt)  # ID 1 = BlockIDs.BlockID.DIRT
 	
-	# ID 2: Wood
-	var wood = _create_cube_with_sides(
-		Vector2i(1, 0),  # Top texture position
-		Vector2i(2, 0),  # Side texture position  
-		Vector2i(1, 0),  # Bottom texture position
-		atlas_material,
-		"Wood"
-	)
-	library.add_model(wood)  # ID 2
-	
-	# ID 3: Iron
-	var iron = _create_cube_model(
-		Vector2i(3, 0),
-		atlas_material,
-		"Iron"
-	)
-	library.add_model(iron)  # ID 3
-	
-	# ID 4: Glass
-	var glass = _create_cube_model(
-		Vector2i(4, 0),
-		atlas_material,
-		"Glass"
-	)
-	glass.transparent = true
-	glass.transparency_index = 1
-	library.add_model(glass)  # ID 4
-	
-	# ID 5: Water
-	var water = _create_cube_model(
-		Vector2i(5, 0),
-		atlas_material,
-		"Water"
-	)
-	water.transparent = true
-	water.transparency_index = 2
-	library.add_model(water)  # ID 5
-	
-	# ID 6: Lava
-	var lava = _create_cube_model(
-		Vector2i(6, 0),
-		atlas_material,
-		"Lava"
-	)
-	library.add_model(lava)  # ID 6
-	
-	# ID 7: Grass
+	# ID 2: Grass
 	var grass = _create_cube_with_sides(
 		Vector2i(0, 1),  # Top (grass)
 		Vector2i(1, 1),  # Sides (dirt with grass)
@@ -121,14 +85,97 @@ func _create_voxel_library_with_atlas() -> VoxelBlockyLibrary:
 		atlas_material,
 		"Grass"
 	)
-	library.add_model(grass)  # ID 7
+	library.add_model(grass)  # ID 2 = BlockIDs.BlockID.GRASS
+	
+	# ID 3: Sand
+	var sand = _create_cube_model(
+		Vector2i(3, 1),  # Position in atlas (sand texture)
+		atlas_material,
+		"Sand"
+	)
+	library.add_model(sand)  # ID 3 = BlockIDs.BlockID.SAND
+	
+	# ID 4: Stone
+	var stone = _create_cube_model(
+		Vector2i(0, 0),  # Position in atlas (top-left)
+		atlas_material,
+		"Stone"
+	)
+	library.add_model(stone)  # ID 4 = BlockIDs.BlockID.STONE
+	
+	# ID 5: Wood
+	var wood = _create_cube_with_sides(
+		Vector2i(1, 0),  # Top texture position
+		Vector2i(2, 0),  # Side texture position  
+		Vector2i(1, 0),  # Bottom texture position
+		atlas_material,
+		"Wood"
+	)
+	library.add_model(wood)  # ID 5 = BlockIDs.BlockID.WOOD
+	
+	# ID 6: Iron
+	var iron = _create_cube_model(
+		Vector2i(3, 0),
+		atlas_material,
+		"Iron"
+	)
+	library.add_model(iron)  # ID 6 = BlockIDs.BlockID.IRON
+	
+	# ID 7: Glass
+	var glass = _create_cube_model(
+		Vector2i(4, 0),
+		atlas_material,
+		"Glass"
+	)
+	glass.transparent = true
+	glass.transparency_index = 1
+	library.add_model(glass)  # ID 7 = BlockIDs.BlockID.GLASS
+	
+	# ID 8: Water
+	var water = _create_cube_model(
+		Vector2i(5, 0),
+		atlas_material,
+		"Water"
+	)
+	water.transparent = true
+	water.transparency_index = 2
+	library.add_model(water)  # ID 8 = BlockIDs.BlockID.WATER
+	
+	# ID 9: Lava
+	var lava = _create_cube_model(
+		Vector2i(6, 0),
+		atlas_material,
+		"Lava"
+	)
+	library.add_model(lava)  # ID 9 = BlockIDs.BlockID.LAVA
+	
+	# ID 10: Log (for trees)
+	var log = _create_cube_with_sides(
+		Vector2i(2, 0),  # Top (log end)
+		Vector2i(2, 0),  # Sides (log bark)
+		Vector2i(2, 0),  # Bottom (log end)
+		atlas_material,
+		"Log"
+	)
+	library.add_model(log)  # ID 10 = BlockIDs.BlockID.LOG
+	
+	# ID 11: Leaves
+	var leaves = _create_cube_model(
+		Vector2i(4, 1),  # Position in atlas (leaves texture) - adjust based on your atlas
+		atlas_material,
+		"Leaves"
+	)
+	leaves.transparent = true
+	leaves.transparency_index = 3  # Use different transparency index than glass/water
+	library.add_model(leaves)  # ID 11 = BlockIDs.BlockID.LEAVES
 	
 	# Bake the library for optimization
 	library.bake()
 	
 	# Save the library
 	ResourceSaver.save(library, "res://materials/voxel_library.tres")
-	print("Created voxel library with " + str(library.get_model_count()) + " models")
+	var model_count = library.models.size() if library.models else 0
+	print("Created voxel library with " + str(model_count) + " models")
 	
 	return library
 

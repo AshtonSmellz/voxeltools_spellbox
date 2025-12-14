@@ -39,8 +39,9 @@ func add_item(item: Item, quantity: int = 1) -> int:
 	for i in range(size):
 		var slot = slots[i]
 		if not slot.is_empty() and slot.item.can_stack_with(item):
-			var added = slot.add_item(item, remaining)
-			remaining -= added
+			var couldnt_add = slot.add_item(item, remaining)
+			var actually_added = remaining - couldnt_add
+			remaining = couldnt_add
 			inventory_changed.emit(i)
 			if remaining <= 0:
 				break
@@ -50,8 +51,9 @@ func add_item(item: Item, quantity: int = 1) -> int:
 		for i in range(size):
 			var slot = slots[i]
 			if slot.is_empty():
-				var added = slot.add_item(item, remaining)
-				remaining -= added
+				var couldnt_add = slot.add_item(item, remaining)
+				var actually_added = remaining - couldnt_add
+				remaining = couldnt_add
 				inventory_changed.emit(i)
 				if remaining <= 0:
 					break
