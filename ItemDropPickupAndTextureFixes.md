@@ -83,3 +83,5 @@
 3. Add visual feedback when items are picked up (particle effect, sound, etc.)
 4. Add item drop rotation animation for better visibility
 
+
+

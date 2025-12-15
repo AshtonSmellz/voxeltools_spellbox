@@ -40,3 +40,5 @@ When you load a world, check the console for:
 2. Check the console for "Set up SimpleWorldGenerator" message
 3. Look for "Generated chunk" messages with block counts
 4. You should see grass on surface, dirt underground, sand in deserts
+
+

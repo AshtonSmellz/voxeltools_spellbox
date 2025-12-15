@@ -1,9 +1,11 @@
-[gd_scene load_steps=9 format=3 uid="uid://dptcqq5uxa4jh"]
+[gd_scene load_steps=10 format=3 uid="uid://dptcqq5uxa4jh"]
 
 [ext_resource type="Script" uid="uid://dcgob33gibv62" path="res://Scripts/Blocks/VoxelWorldManager.gd" id="1_qvgq0"]
 [ext_resource type="VoxelGeneratorNoise" uid="uid://bigl0af32f6x5" path="res://VoxelToolFiles/voxel_generator_noise.tres" id="2_alii3"]
 [ext_resource type="VoxelMesherBlocky" uid="uid://c7crvpq63j0hh" path="res://VoxelToolFiles/voxel_mesher_blocky.tres" id="2_qvgq0"]
 [ext_resource type="Material" uid="uid://cae2ptfgpiw7d" path="res://materials/voxel_atlas_material.tres" id="4_hy2kt"]
+[ext_resource type="Script" uid="uid://b8g1du6u7mxfb" path="res://addons/DayNightCycle/DayNightCycle.gd" id="5_f1ejf"]
+[ext_resource type="Material" uid="uid://wyikf3yxoy6x" path="res://addons/DayNightCycle/Sky_Day.tres" id="5_p4c8d"]
 
 [sub_resource type="GDScript" id="GDScript_0nejw"]
 script/source = "extends Node
@@ -238,25 +240,15 @@ func receive_own_character(peer_id: int, pos: Vector3):
 	_spawn_character(peer_id, pos)
 "
 
-[sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_ixhix"]
-ground_color = Color(0.14902, 0.0901961, 0.0745098, 1)
+[sub_resource type="Sky" id="Sky_p4c8d"]
+sky_material = ExtResource("5_p4c8d")
 
-[sub_resource type="Sky" id="Sky_403h4"]
-sky_material = SubResource("PhysicalSkyMaterial_ixhix")
-
-[sub_resource type="Environment" id="2"]
+[sub_resource type="Environment" id="Environment_f1ejf"]
 background_mode = 2
-sky = SubResource("Sky_403h4")
-ambient_light_energy = 1.18
-sdfgi_enabled = true
-sdfgi_use_occlusion = true
-glow_hdr_threshold = 0.5
-fog_enabled = true
-fog_light_color = Color(0.441597, 0.854964, 0.948847, 1)
-fog_light_energy = 0.59
-fog_aerial_perspective = 1.0
-fog_sky_affect = 0.439
-fog_height_density = -16.0
+background_energy_multiplier = 0.88
+sky = SubResource("Sky_p4c8d")
+tonemap_mode = 2
+glow_enabled = true
 
 [node name="GameWorld" type="Node"]
 script = SubResource("GDScript_0nejw")
@@ -277,10 +269,20 @@ gi_mode = 2
 material_override = ExtResource("4_hy2kt")
 run_stream_in_editor = false
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.97321, 0.172326, -0.152202, -0.0478236, 0.495785, 0.867127, 0.224888, 0.851176, -0.474262, 1.51966, 19.7004, 14.0879)
-light_color = Color(0.877946, 0.876756, 0.873512, 1)
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." node_paths=PackedStringArray("worldEnvironment", "nightLight")]
+transform = Transform3D(-0.866023, -0.433016, 0.250001, 0, 0.499998, 0.866027, -0.500003, 0.749999, -0.43301, 0, 0, 0)
 shadow_enabled = true
+script = ExtResource("5_f1ejf")
+worldEnvironment = NodePath("../WorldEnvironment")
+nightLight = NodePath("DirectionalLight3D")
+speedMultiplier = 20.0
+dayLightEnergy = 0.8
+nightLightEnergy = 0.01
+nightStarIntensity = 0.2
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="DirectionalLight3D"]
+transform = Transform3D(-1, 0, 1.22465e-16, 0, 1, 0, -1.22465e-16, 0, -1, 0, 0, 0)
+light_energy = 0.0
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("2")
+environment = SubResource("Environment_f1ejf")

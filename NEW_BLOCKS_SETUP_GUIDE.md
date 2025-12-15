@@ -106,3 +106,5 @@ If you want to customize:
 - **Tree density**: Adjust `tree_density` in `SimpleWorldGenerator.gd`
 - **Tree size**: Modify `tree_height` and `canopy_radius` in `_generate_tree()`
 - **Stone depth**: Change the depth threshold (currently 8) in `_get_block_at()`
+
+

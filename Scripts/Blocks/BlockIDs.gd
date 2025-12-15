@@ -77,4 +77,3 @@ static func item_id_to_block_id(item_id: String) -> int:
 			return BlockID.LEAVES
 		_:
 			return BlockID.AIR
-

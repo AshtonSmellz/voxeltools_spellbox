@@ -603,28 +603,6 @@ func setup_comprehensive_generation():
 	
 	# Note: Removed structure generation for simplicity
 
-func _on_chunk_loaded(position: Vector3i, lod: int):
-	if lod != 0:
-		return  # Only process highest detail chunks
-	
-	# Occasionally place structures in loaded chunks
-	var structure_chance = randf()
-	
-	if structure_chance < 0.01:  # 1% chance
-		var structure_pos = position + Vector3i(8, 0, 8)  # Center of chunk
-		
-		# Find surface height
-		var surface_y = _find_surface_height(structure_pos.x, structure_pos.z)
-		if surface_y > 0:
-			structure_pos.y = surface_y + 1
-			
-			# Choose random structure
-			var structures = ["cabin", "mine_entrance", "bridge", "rail_track"]
-			var chosen_structure = structures[randi() % structures.size()]
-			
-			StructureGenerator.place_structure(voxel_tool, chosen_structure, structure_pos)
-			print("Placed ", chosen_structure, " at ", structure_pos)
-
 func _find_surface_height(x: int, z: int) -> int:
 	# Scan downward to find surface
 	for y in range(128, 0, -1):
