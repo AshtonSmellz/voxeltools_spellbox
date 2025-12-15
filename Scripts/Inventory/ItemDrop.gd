@@ -68,11 +68,6 @@ func _setup_visual():
 		collision_shape.name = "CollisionShape3D"
 		add_child(collision_shape)
 	
-	# Setup basic cube mesh for dropped items
-	var box_mesh = BoxMesh.new()
-	box_mesh.size = Vector3(0.3, 0.3, 0.3)
-	mesh_instance.mesh = box_mesh
-	
 	# Setup collision
 	var box_shape = BoxShape3D.new()
 	box_shape.size = Vector3(0.3, 0.3, 0.3)
@@ -84,12 +79,30 @@ func _setup_visual():
 	material.metallic = 0.0
 	
 	if item_stack and not item_stack.is_empty() and item_stack.item:
-		# Use item's icon texture if available
-		if item_stack.item.icon:
+		# For blocks, use the extracted icon texture (which is already a tile extracted from atlas)
+		# This avoids UV coordinate issues
+		if item_stack.item.icon and item_stack.item.item_type == Item.ItemType.BLOCK:
+			material.albedo_texture = item_stack.item.icon
+			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST  # Pixel-perfect
+			material.albedo_color = Color.WHITE
+			material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # Unshaded to avoid lighting issues
+			material.disable_receive_shadows = true
+			
+			# Use standard box mesh - the icon texture is already extracted as a single tile
+			var box_mesh = BoxMesh.new()
+			box_mesh.size = Vector3(0.3, 0.3, 0.3)
+			mesh_instance.mesh = box_mesh
+			print("ItemDrop: Using extracted icon texture for block: ", item_stack.item.name)
+		elif item_stack.item.icon:
+			# Fallback: use extracted icon texture (for non-block items)
 			material.albedo_texture = item_stack.item.icon
 			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
-			# Use white color so texture shows properly
 			material.albedo_color = Color.WHITE
+			
+			# Use standard box mesh for icon textures
+			var box_mesh = BoxMesh.new()
+			box_mesh.size = Vector3(0.3, 0.3, 0.3)
+			mesh_instance.mesh = box_mesh
 			print("ItemDrop: Using icon texture for item: ", item_stack.item.name)
 		else:
 			# Fallback to color based on item type if no icon
@@ -106,10 +119,17 @@ func _setup_visual():
 					material.albedo_color = Color(0.2, 0.8, 0.2)  # Green
 				_:
 					material.albedo_color = Color(0.5, 0.5, 0.5)  # Default gray
+			
+			var box_mesh = BoxMesh.new()
+			box_mesh.size = Vector3(0.3, 0.3, 0.3)
+			mesh_instance.mesh = box_mesh
 			print("ItemDrop: Using color for item (no icon): ", item_stack.item.name, " (type: ", item_stack.item.item_type, ")")
 	else:
 		# Default color if item_stack is not set yet (will be updated when item_stack is set)
 		material.albedo_color = Color(0.5, 0.5, 0.5)  # Gray
+		var box_mesh = BoxMesh.new()
+		box_mesh.size = Vector3(0.3, 0.3, 0.3)
+		mesh_instance.mesh = box_mesh
 		if not item_stack:
 			print("ItemDrop: Warning - item_stack is null during visual setup")
 		elif item_stack.is_empty():
@@ -118,6 +138,141 @@ func _setup_visual():
 			print("ItemDrop: Warning - item_stack.item is null during visual setup")
 	
 	mesh_instance.material_override = material
+
+
+# Create a cube mesh with UV coordinates mapped to a specific tile in the atlas
+func _create_cube_mesh_with_atlas_uvs(tile_pos: Vector2i) -> ArrayMesh:
+	# Get atlas size from voxel library
+	var atlas_size_tiles = 10  # Default, but check library
+	var library_path = "res://VoxelToolFiles/voxel_blocky_library.tres"
+	var library = load(library_path) as VoxelBlockyLibrary
+	if library and library.models.size() > 0:
+		# Check first model to get atlas size
+		var first_model = library.models[0]
+		if first_model is VoxelBlockyModelCube:
+			atlas_size_tiles = first_model.atlas_size_in_tiles.x
+			if atlas_size_tiles == 0:
+				atlas_size_tiles = 10  # Fallback
+	
+	var tile_size_uv = 1.0 / float(atlas_size_tiles)  # Each tile is 1/atlas_size of the atlas
+	
+	# Calculate UV coordinates for this tile
+	# UV coordinates go from 0-1, so we need to map tile position to UV space
+	var uv_min_x = float(tile_pos.x) * tile_size_uv
+	var uv_max_x = float(tile_pos.x + 1) * tile_size_uv
+	var uv_min_y = float(tile_pos.y) * tile_size_uv
+	var uv_max_y = float(tile_pos.y + 1) * tile_size_uv
+	
+	# Flip Y coordinate (Godot's UV origin is bottom-left, but atlas is top-left)
+	var uv_min_y_flipped = 1.0 - uv_max_y
+	var uv_max_y_flipped = 1.0 - uv_min_y
+	
+	var size = 0.3
+	var half_size = size / 2.0
+	
+	# Use SurfaceTool for easier mesh creation with proper normals
+	var surface_tool = SurfaceTool.new()
+	surface_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	
+	# Helper function to add a quad face
+	var add_quad = func(v0: Vector3, v1: Vector3, v2: Vector3, v3: Vector3, normal: Vector3, uv0: Vector2, uv1: Vector2, uv2: Vector2, uv3: Vector2):
+		# Set normal once for the face
+		surface_tool.set_normal(normal)
+		
+		# First triangle (counter-clockwise when viewed from outside)
+		surface_tool.set_uv(uv0)
+		surface_tool.add_vertex(v0)
+		surface_tool.set_uv(uv1)
+		surface_tool.add_vertex(v1)
+		surface_tool.set_uv(uv2)
+		surface_tool.add_vertex(v2)
+		
+		# Second triangle
+		surface_tool.set_uv(uv0)
+		surface_tool.add_vertex(v0)
+		surface_tool.set_uv(uv2)
+		surface_tool.add_vertex(v2)
+		surface_tool.set_uv(uv3)
+		surface_tool.add_vertex(v3)
+	
+	# UV coordinates for the tile
+	var uv_tl = Vector2(uv_min_x, uv_min_y_flipped)  # Top-left
+	var uv_tr = Vector2(uv_max_x, uv_min_y_flipped)  # Top-right
+	var uv_br = Vector2(uv_max_x, uv_max_y_flipped)  # Bottom-right
+	var uv_bl = Vector2(uv_min_x, uv_max_y_flipped)  # Bottom-left
+	
+	# Front face (+Z)
+	add_quad.call(
+		Vector3(-half_size, -half_size, half_size),  # Bottom-left
+		Vector3(half_size, -half_size, half_size),   # Bottom-right
+		Vector3(half_size, half_size, half_size),    # Top-right
+		Vector3(-half_size, half_size, half_size),   # Top-left
+		Vector3(0, 0, 1),  # Normal pointing +Z
+		uv_bl, uv_br, uv_tr, uv_tl
+	)
+	
+	# Back face (-Z)
+	add_quad.call(
+		Vector3(half_size, -half_size, -half_size),   # Bottom-left
+		Vector3(-half_size, -half_size, -half_size),  # Bottom-right
+		Vector3(-half_size, half_size, -half_size),   # Top-right
+		Vector3(half_size, half_size, -half_size),    # Top-left
+		Vector3(0, 0, -1),  # Normal pointing -Z
+		uv_bl, uv_br, uv_tr, uv_tl
+	)
+	
+	# Top face (+Y)
+	add_quad.call(
+		Vector3(-half_size, half_size, half_size),   # Front-left
+		Vector3(half_size, half_size, half_size),    # Front-right
+		Vector3(half_size, half_size, -half_size),  # Back-right
+		Vector3(-half_size, half_size, -half_size),  # Back-left
+		Vector3(0, 1, 0),  # Normal pointing +Y
+		uv_bl, uv_br, uv_tr, uv_tl
+	)
+	
+	# Bottom face (-Y)
+	add_quad.call(
+		Vector3(-half_size, -half_size, -half_size),  # Back-left
+		Vector3(half_size, -half_size, -half_size),  # Back-right
+		Vector3(half_size, -half_size, half_size),    # Front-right
+		Vector3(-half_size, -half_size, half_size),   # Front-left
+		Vector3(0, -1, 0),  # Normal pointing -Y
+		uv_bl, uv_br, uv_tr, uv_tl
+	)
+	
+	# Right face (+X)
+	add_quad.call(
+		Vector3(half_size, -half_size, half_size),   # Front-bottom
+		Vector3(half_size, -half_size, -half_size),  # Back-bottom
+		Vector3(half_size, half_size, -half_size),  # Back-top
+		Vector3(half_size, half_size, half_size),    # Front-top
+		Vector3(1, 0, 0),  # Normal pointing +X
+		uv_bl, uv_br, uv_tr, uv_tl
+	)
+	
+	# Left face (-X)
+	add_quad.call(
+		Vector3(-half_size, -half_size, -half_size),  # Back-bottom
+		Vector3(-half_size, -half_size, half_size),   # Front-bottom
+		Vector3(-half_size, half_size, half_size),     # Front-top
+		Vector3(-half_size, half_size, -half_size),    # Back-top
+		Vector3(-1, 0, 0),  # Normal pointing -X
+		uv_bl, uv_br, uv_tr, uv_tl
+	)
+	
+	# Generate tangents (needed for proper rendering)
+	surface_tool.generate_tangents()
+	
+	# Generate the mesh
+	var mesh = surface_tool.commit()
+	
+	if not mesh:
+		print("ERROR: Failed to create mesh with SurfaceTool")
+		return null
+	
+	print("Successfully created custom mesh - tile_pos: ", tile_pos, " UV range: (", uv_min_x, ",", uv_min_y_flipped, ") to (", uv_max_x, ",", uv_max_y_flipped, ")")
+	return mesh
 
 func setup_item(stack: ItemStack):
 	if stack and not stack.is_empty() and stack.item:
@@ -150,15 +305,25 @@ func _physics_process(delta: float):
 	
 	# Handle magnetic attraction to player
 	if target_player and pickup_timer > pickup_delay:
-		var direction = (target_player.global_position - global_position).normalized()
-		var distance = global_position.distance_to(target_player.global_position)
+		var player_pos = target_player.global_position
+		var item_pos = global_position
 		
-		if distance < magnetic_range:
+		# Calculate horizontal distance (ignore Y-axis for pickup range)
+		# This allows pickup when items are to the side of the player
+		var horizontal_distance = Vector2(item_pos.x, item_pos.z).distance_to(Vector2(player_pos.x, player_pos.z))
+		var full_distance = global_position.distance_to(target_player.global_position)
+		
+		# Use full 3D distance for magnetic attraction direction
+		var direction = (player_pos - item_pos).normalized()
+		
+		# Magnetic attraction works within magnetic_range (3D distance)
+		if full_distance < magnetic_range:
 			var force = direction * magnetic_speed * mass
 			apply_central_force(force)
 		
-		# Auto pickup when very close
-		if distance < 0.5:
+		# Auto pickup when horizontally close (within pickup_range horizontally, and reasonably close vertically)
+		# This allows pickup when items are to the side of the player, not just directly below
+		if horizontal_distance < pickup_range and abs(item_pos.y - player_pos.y) < 2.0:
 			_try_pickup()
 
 func _on_body_entered(body: Node3D):
@@ -211,6 +376,7 @@ func _find_player_in_range():
 	var closest_player = _find_player_recursive(scene_root)
 	
 	if closest_player:
+		# Use 3D distance for initial detection (magnetic_range)
 		var dist = global_position.distance_to(closest_player.global_position)
 		if dist <= magnetic_range:
 			target_player = closest_player
