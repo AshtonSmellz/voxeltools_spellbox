@@ -85,8 +85,9 @@ func _setup_visual():
 			material.albedo_texture = item_stack.item.icon
 			material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST  # Pixel-perfect
 			material.albedo_color = Color.WHITE
-			material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED  # Unshaded to avoid lighting issues
-			material.disable_receive_shadows = true
+			# Use normal shading so blocks respond to lighting (don't glow in dark)
+			material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+			material.disable_receive_shadows = false  # Allow shadows for better integration
 			
 			# Use standard box mesh - the icon texture is already extracted as a single tile
 			var box_mesh = BoxMesh.new()

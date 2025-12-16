@@ -6,7 +6,7 @@
 
 [sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_l34x6"]
 material_override_0 = ExtResource("1_l34x6")
-atlas_size_in_tiles = Vector2i(10, 10)
+atlas_size_in_tiles = Vector2i(14, 14)
 tile_left = Vector2i(2, 0)
 tile_right = Vector2i(2, 0)
 tile_bottom = Vector2i(2, 0)
@@ -16,7 +16,7 @@ tile_front = Vector2i(2, 0)
 
 [sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_sh2fm"]
 material_override_0 = ExtResource("1_l34x6")
-atlas_size_in_tiles = Vector2i(10, 10)
+atlas_size_in_tiles = Vector2i(14, 14)
 tile_left = Vector2i(1, 0)
 tile_right = Vector2i(1, 0)
 tile_bottom = Vector2i(2, 0)
@@ -25,7 +25,7 @@ tile_front = Vector2i(1, 0)
 
 [sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_3q0dx"]
 material_override_0 = ExtResource("1_l34x6")
-atlas_size_in_tiles = Vector2i(10, 10)
+atlas_size_in_tiles = Vector2i(14, 14)
 tile_left = Vector2i(3, 0)
 tile_right = Vector2i(3, 0)
 tile_bottom = Vector2i(3, 0)
@@ -35,7 +35,7 @@ tile_front = Vector2i(3, 0)
 
 [sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_md8ut"]
 material_override_0 = ExtResource("1_l34x6")
-atlas_size_in_tiles = Vector2i(10, 10)
+atlas_size_in_tiles = Vector2i(14, 14)
 tile_left = Vector2i(4, 0)
 tile_right = Vector2i(4, 0)
 tile_bottom = Vector2i(4, 0)
@@ -45,7 +45,7 @@ tile_front = Vector2i(4, 0)
 
 [sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_m6c05"]
 material_override_0 = ExtResource("1_l34x6")
-atlas_size_in_tiles = Vector2i(10, 10)
+atlas_size_in_tiles = Vector2i(14, 14)
 tile_left = Vector2i(6, 0)
 tile_right = Vector2i(6, 0)
 tile_bottom = Vector2i(5, 0)
@@ -55,7 +55,7 @@ tile_front = Vector2i(6, 0)
 
 [sub_resource type="VoxelBlockyModelCube" id="VoxelBlockyModelCube_rbjqk"]
 material_override_0 = ExtResource("1_l34x6")
-atlas_size_in_tiles = Vector2i(10, 10)
+atlas_size_in_tiles = Vector2i(14, 14)
 tile_left = Vector2i(7, 0)
 tile_right = Vector2i(7, 0)
 tile_bottom = Vector2i(7, 0)

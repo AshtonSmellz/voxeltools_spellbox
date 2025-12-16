@@ -209,25 +209,14 @@ func _get_item_icon(atlas_texture: Texture2D, tile_pos: Vector2i) -> Texture2D:
 	var atlas_width = atlas_image.get_width()
 	var atlas_height = atlas_image.get_height()
 	
-	# Try to get atlas size from voxel library
-	var library_path = "res://VoxelToolFiles/voxel_blocky_library.tres"
-	var library = load(library_path) as VoxelBlockyLibrary
-	var atlas_size_tiles = 10  # Default fallback
-	if library and library.models.size() > 0:
-		var first_model = library.models[0]
-		if first_model is VoxelBlockyModelCube:
-			atlas_size_tiles = first_model.atlas_size_in_tiles.x
-			if atlas_size_tiles == 0:
-				atlas_size_tiles = 10
-	
-	# Calculate tile size: if atlas is 60x60 and library says 10x10 tiles, tiles are 6x6 pixels
-	# But if library says 10x10 tiles and atlas is larger, calculate from that
-	# Actually, let's calculate: tile_size = atlas_width / atlas_size_tiles
-	var tile_size = int(atlas_width / atlas_size_tiles)
+	# Atlas has 14x14 tiles (14 tiles per row/column)
+	# Each tile is 6x6 pixels (84/14 = 6)
+	var tiles_per_dimension = 14
+	var tile_size = int(atlas_width / tiles_per_dimension)
 	if tile_size == 0:
-		tile_size = 10  # Fallback
+		tile_size = 6  # Fallback: assume 6x6 pixel tiles (for 84x84 atlas)
 	
-	print("Atlas size: ", atlas_width, "x", atlas_height, " tiles: ", atlas_size_tiles, "x", atlas_size_tiles, " tile_size: ", tile_size)
+	print("Atlas size: ", atlas_width, "x", atlas_height, " tiles: ", tiles_per_dimension, "x", tiles_per_dimension, " tile_size: ", tile_size, "x", tile_size)
 	
 	var pixel_x = tile_pos.x * tile_size
 	var pixel_y = tile_pos.y * tile_size
@@ -237,14 +226,21 @@ func _get_item_icon(atlas_texture: Texture2D, tile_pos: Vector2i) -> Texture2D:
 		print("Warning: Texture coordinates out of bounds: ", tile_pos, " for atlas size: ", atlas_image.get_size())
 		return null
 	
-	# Extract the 10x10 region
+	# Extract the tile region
 	var extracted_image = atlas_image.get_region(Rect2i(pixel_x, pixel_y, tile_size, tile_size))
+	
+	# Upscale the extracted image to a larger size for better visibility
+	# Keep as multiple of 10: scale 6x6 tiles to 60x60 (10x upscale, multiple of 10)
+	var scale_factor = 10  # 10x upscale: 6x6 -> 60x60 (multiple of 10)
+	var target_size = tile_size * scale_factor
+	if extracted_image.get_width() != target_size or extracted_image.get_height() != target_size:
+		extracted_image.resize(target_size, target_size, Image.INTERPOLATE_NEAREST)  # Use nearest to preserve pixel art
 	
 	# Create a new ImageTexture from the extracted region
 	var icon_texture = ImageTexture.create_from_image(extracted_image)
 	
 	if icon_texture:
-		print("Successfully extracted icon texture from atlas at tile position: ", tile_pos)
+		print("Successfully extracted icon texture from atlas at tile position: ", tile_pos, " - extracted size: ", tile_size, "x", tile_size, " scaled to: ", target_size, "x", target_size)
 	else:
 		print("Warning: Failed to create ImageTexture from extracted image")
 	
